@@ -11,6 +11,9 @@ const TOOL_COLORS = {
   read_notion_page: '#a78bfa',
   create_notion_page: '#7c3aed',
   search_notion: '#c4b5fd',
+  crm_search_contacts: '#34d399',
+  crm_create_note: '#10b981',
+  crm_list_opportunities: '#6ee7b7',
 }
 
 function getColor(toolName) {

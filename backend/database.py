@@ -29,6 +29,12 @@ SEED_WORKFLOWS = [
         "value_category": "DATA_ENTRY",
         "baseline_minutes": 20.0,
     },
+    {
+        "name": "CRM Pipeline Summary",
+        "description": "Lists open opportunities from the CRM and posts a pipeline summary to Slack",
+        "value_category": "COORDINATION",
+        "baseline_minutes": 12.0,
+    },
 ]
 
 DDL_WORKFLOWS = """

@@ -14,6 +14,7 @@ graph TD
     LG["LangGraph\nOrchestrator"]
     Slack["Slack SDK\n(mock if no token)"]
     Notion["Notion SDK\n(mock if no token)"]
+    CRM["Twenty CRM GraphQL\n(mock if no key)"]
     LLM["Claude Haiku\n(Anthropic API)"]
     FE["React Dashboard\n(port 5173)"]
 
@@ -22,6 +23,7 @@ graph TD
     LG -->|route_query node| LLM
     LG -->|slack_node| Slack
     LG -->|notion_node| Notion
+    LG -->|crm_node| CRM
     LG -->|synthesize_node| LLM
     LG -->|write RunRecord + ROI| DB
     API --> DB
@@ -73,13 +75,13 @@ docker compose up --build
 - Dashboard: http://localhost:5173
 - API docs: http://localhost:8000/docs
 
-The three example workflows are seeded automatically on first startup.
+The four example workflows are seeded automatically on first startup.
 
 ---
 
 ## Example Workflows
 
-Three workflows are pre-seeded into the database so the dashboard is populated immediately:
+Four workflows are pre-seeded into the database so the dashboard is populated immediately:
 
 ### 1. Slack Channel Digest
 > Category: **SUMMARIZATION** · Baseline: 15 min
@@ -95,6 +97,11 @@ Searches your Notion workspace for pages relevant to a query and returns summari
 > Category: **DATA_ENTRY** · Baseline: 20 min
 
 Takes raw meeting notes as input and creates a structured Notion page with sections, action items, and key decisions. Replaces the post-meeting cleanup task that often falls through the cracks.
+
+### 4. CRM Pipeline Summary
+> Category: **COORDINATION** · Baseline: 12 min
+
+Lists open opportunities from the Twenty CRM pipeline and posts a summary to Slack. Replaces the manual work of checking the CRM and relaying pipeline status to the team.
 
 ---
 
@@ -132,7 +139,7 @@ Interactive Swagger docs are available at **http://localhost:8000/docs** after s
 
 ## Demo Mode
 
-The console runs fully without any external API keys. When `SLACK_BOT_TOKEN` or `NOTION_API_KEY` are absent, the connectors return realistic mock data and log a warning at startup. Set `ANTHROPIC_API_KEY` to enable real LLM calls; without it, the orchestrator falls back to a canned response so the run record and ROI calculation still complete.
+The console runs fully without any external API keys. When `SLACK_BOT_TOKEN`, `NOTION_API_KEY`, or `TWENTY_API_KEY` are absent, the connectors return realistic mock data and log a warning at startup — the Twenty CRM connector returns mock contacts and opportunities without a key. Set `ANTHROPIC_API_KEY` to enable real LLM calls; without it, the orchestrator falls back to a canned response so the run record and ROI calculation still complete.
 
 ---
 
