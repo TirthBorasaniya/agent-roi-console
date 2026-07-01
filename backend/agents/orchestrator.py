@@ -31,7 +31,7 @@ DEFAULT_OUTPUT_PRICE = float(os.getenv("LLM_OUTPUT_PRICE_PER_1M", "15.0"))
 
 SYSTEM_PROMPT = (
     "You are an automation assistant. "
-    "Use the available Slack and Notion tools to fulfill the user's request. "
+    "Use the available Slack, Notion, and Twenty CRM tools to fulfill the user's request. "
     "Be concise and execute the task directly without unnecessary commentary. "
     "When done, provide a brief summary of what you accomplished."
 )
@@ -133,6 +133,8 @@ def _should_continue(state: AgentState) -> str:
         tool_names_set = {tc["name"] for tc in tool_calls}
         if tool_names_set & {"post_slack_message", "read_slack_channel"}:
             return "slack"
+        if tool_names_set & {"crm_search_contacts", "crm_create_note", "crm_list_opportunities"}:
+            return "crm"
         return "notion"
     return "synthesize"
 
@@ -333,14 +335,17 @@ def build_graph() -> StateGraph:
     """
     from agents.slack_agent import slack_tool_node
     from agents.notion_agent import notion_tool_node
+    from agents.crm_agent import crm_tool_node
 
     slack_node = _tool_node_wrapper(slack_tool_node, "slack")
     notion_node = _tool_node_wrapper(notion_tool_node, "notion")
+    crm_node = _tool_node_wrapper(crm_tool_node, "crm")
 
     graph = StateGraph(AgentState)
     graph.add_node("route_query", route_query_node)
     graph.add_node("slack", slack_node)
     graph.add_node("notion", notion_node)
+    graph.add_node("crm", crm_node)
     graph.add_node("synthesize", synthesize_node)
 
     graph.set_entry_point("route_query")
@@ -348,11 +353,12 @@ def build_graph() -> StateGraph:
     graph.add_conditional_edges(
         "route_query",
         _should_continue,
-        {"slack": "slack", "notion": "notion", "synthesize": "synthesize"},
+        {"slack": "slack", "notion": "notion", "crm": "crm", "synthesize": "synthesize"},
     )
     # after tool execution, loop back so the LLM can decide if more tools are needed
     graph.add_edge("slack", "route_query")
     graph.add_edge("notion", "route_query")
+    graph.add_edge("crm", "route_query")
     graph.add_edge("synthesize", END)
 
     return graph.compile()

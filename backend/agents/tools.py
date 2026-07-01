@@ -1,4 +1,4 @@
-"""LangChain tool definitions for Slack and Notion operations."""
+"""LangChain tool definitions for Slack, Notion, and Twenty CRM operations."""
 
 # ============= Standard Library =============
 import json
@@ -12,6 +12,11 @@ from connectors.notion_connector import (
     read_notion_page as _read_notion_page,
     create_notion_page as _create_notion_page,
     search_notion as _search_notion,
+)
+from connectors.twenty_connector import (
+    search_crm_contacts as _search_crm_contacts,
+    create_crm_note as _create_crm_note,
+    list_crm_opportunities as _list_crm_opportunities,
 )
 
 
@@ -51,6 +56,29 @@ def search_notion(query: str) -> str:
     return json.dumps(results_list)
 
 
+# ============= CRM Tools =============
+
+@tool
+def crm_search_contacts(query: str) -> str:
+    """Search Twenty CRM contacts by name or email. Returns JSON list of contact dicts."""
+    results_list = _search_crm_contacts(query=query)
+    return json.dumps(results_list)
+
+
+@tool
+def crm_create_note(contact_id: str, body: str) -> str:
+    """Create a note on a Twenty CRM contact. Returns JSON note dict."""
+    note = _create_crm_note(contact_id=contact_id, body=body)
+    return json.dumps(note)
+
+
+@tool
+def crm_list_opportunities() -> str:
+    """List recent open opportunities from the CRM pipeline. Returns JSON list of opportunity dicts."""
+    results_list = _list_crm_opportunities()
+    return json.dumps(results_list)
+
+
 # ============= Tool Registry =============
 
 ALL_TOOLS = [
@@ -59,4 +87,7 @@ ALL_TOOLS = [
     read_notion_page,
     create_notion_page,
     search_notion,
+    crm_search_contacts,
+    crm_create_note,
+    crm_list_opportunities,
 ]
