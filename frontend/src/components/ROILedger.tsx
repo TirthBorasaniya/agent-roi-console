@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api'
+import type { Run, Workflow } from '../types'
 
-const CATEGORY_COLORS = {
+const CATEGORY_COLORS: Record<string, string> = {
   RESEARCH: 'bg-blue-900 text-blue-300',
   COMMUNICATION: 'bg-green-900 text-green-300',
   DATA_ENTRY: 'bg-yellow-900 text-yellow-300',
@@ -9,7 +10,11 @@ const CATEGORY_COLORS = {
   COORDINATION: 'bg-orange-900 text-orange-300',
 }
 
-function CategoryBadge({ category }) {
+interface CategoryBadgeProps {
+  category: string
+}
+
+function CategoryBadge({ category }: CategoryBadgeProps) {
   const cls = CATEGORY_COLORS[category] || 'bg-gray-700 text-gray-300'
   return (
     <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${cls}`}>
@@ -18,10 +23,16 @@ function CategoryBadge({ category }) {
   )
 }
 
+interface LedgerRow extends Workflow {
+  runCount: number
+  totalRoi: number
+  avgCost: number
+}
+
 export default function ROILedger() {
-  const [workflows, setWorkflows] = useState([])
-  const [runs, setRuns] = useState([])
-  const [error, setError] = useState(null)
+  const [workflows, setWorkflows] = useState<Workflow[]>([])
+  const [runs, setRuns] = useState<Run[]>([])
+  const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -30,7 +41,7 @@ export default function ROILedger() {
         setWorkflows(wfs)
         setRuns(rns)
       })
-      .catch((e) => setError(e.message))
+      .catch((e: Error) => setError(e.message))
       .finally(() => setLoading(false))
   }, [])
 
@@ -48,7 +59,7 @@ export default function ROILedger() {
 
   const completedRuns = runs.filter((r) => r.status === 'COMPLETED')
 
-  const rows = workflows.map((wf) => {
+  const rows: LedgerRow[] = workflows.map((wf) => {
     const wfRuns = completedRuns.filter((r) => r.workflow_id === wf.id)
     const totalRoi = wfRuns.reduce((acc, r) => acc + r.net_roi_usd, 0)
     const avgCost = wfRuns.length > 0

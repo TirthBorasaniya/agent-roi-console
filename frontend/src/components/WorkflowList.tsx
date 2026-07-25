@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api'
+import type { Run, Workflow } from '../types'
 
-const CATEGORY_COLORS = {
+const CATEGORY_COLORS: Record<string, string> = {
   RESEARCH: 'bg-blue-900 text-blue-300',
   COMMUNICATION: 'bg-green-900 text-green-300',
   DATA_ENTRY: 'bg-yellow-900 text-yellow-300',
@@ -9,7 +10,7 @@ const CATEGORY_COLORS = {
   COORDINATION: 'bg-orange-900 text-orange-300',
 }
 
-const STATUS_COLORS = {
+const STATUS_COLORS: Record<string, string> = {
   COMPLETED: 'text-green-400',
   RUNNING: 'text-yellow-400',
   FAILED: 'text-red-400',
@@ -21,32 +22,36 @@ function Spinner() {
   )
 }
 
-export default function WorkflowList({ onRunComplete }) {
-  const [workflows, setWorkflows] = useState([])
-  const [runs, setRuns] = useState([])
-  const [runningIds, setRunningIds] = useState(new Set())
-  const [error, setError] = useState(null)
+interface WorkflowListProps {
+  onRunComplete?: () => void
+}
+
+export default function WorkflowList({ onRunComplete }: WorkflowListProps) {
+  const [workflows, setWorkflows] = useState<Workflow[]>([])
+  const [runs, setRuns] = useState<Run[]>([])
+  const [runningIds, setRunningIds] = useState<Set<string>>(new Set())
+  const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
-  const fetchData = () =>
+  const fetchData = (): Promise<void> =>
     Promise.all([api.getWorkflows(), api.getRuns(1, 100)])
       .then(([wfs, rns]) => {
         setWorkflows(wfs)
         setRuns(rns)
       })
-      .catch((e) => setError(e.message))
+      .catch((e: Error) => setError(e.message))
       .finally(() => setLoading(false))
 
   useEffect(() => { fetchData() }, [])
 
-  const handleRun = async (workflowId) => {
+  const handleRun = async (workflowId: string) => {
     setRunningIds((prev) => new Set([...prev, workflowId]))
     try {
       await api.triggerRun(workflowId)
       await fetchData()
       onRunComplete?.()
     } catch (e) {
-      setError(`Run failed: ${e.message}`)
+      setError(`Run failed: ${(e as Error).message}`)
     } finally {
       setRunningIds((prev) => {
         const next = new Set(prev)

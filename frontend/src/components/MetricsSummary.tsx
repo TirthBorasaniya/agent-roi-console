@@ -1,7 +1,15 @@
 import { useEffect, useState } from 'react'
+import type { ReactNode } from 'react'
 import { api } from '../api'
+import type { MetricsSummary as MetricsSummaryData } from '../types'
 
-function StatCard({ label, value, sub }) {
+interface StatCardProps {
+  label: string
+  value: ReactNode
+  sub?: string
+}
+
+function StatCard({ label, value, sub }: StatCardProps) {
   return (
     <div className="bg-gray-900 rounded-xl p-6 flex flex-col gap-1 border border-gray-800">
       <span className="text-xs text-gray-400 uppercase tracking-wider">{label}</span>
@@ -12,13 +20,13 @@ function StatCard({ label, value, sub }) {
 }
 
 export default function MetricsSummary() {
-  const [data, setData] = useState(null)
-  const [error, setError] = useState(null)
+  const [data, setData] = useState<MetricsSummaryData | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     api.getMetricsSummary()
       .then(setData)
-      .catch((e) => setError(e.message))
+      .catch((e: Error) => setError(e.message))
   }, [])
 
   if (error) return <p className="text-red-400 text-sm">Failed to load metrics: {error}</p>

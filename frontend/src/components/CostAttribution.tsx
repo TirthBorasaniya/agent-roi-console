@@ -4,8 +4,9 @@ import {
   ResponsiveContainer, Cell,
 } from 'recharts'
 import { api } from '../api'
+import type { CostByTool } from '../types'
 
-const TOOL_COLORS = {
+const TOOL_COLORS: Record<string, string> = {
   post_slack_message: '#38bdf8',
   read_slack_channel: '#0ea5e9',
   read_notion_page: '#a78bfa',
@@ -16,19 +17,26 @@ const TOOL_COLORS = {
   crm_list_opportunities: '#6ee7b7',
 }
 
-function getColor(toolName) {
+function getColor(toolName: string): string {
   return TOOL_COLORS[toolName] || '#6b7280'
 }
 
+interface ChartDatum {
+  name: string
+  raw_name: string
+  cost: number
+  calls: number
+}
+
 export default function CostAttribution() {
-  const [data, setData] = useState([])
-  const [error, setError] = useState(null)
+  const [data, setData] = useState<CostByTool[]>([])
+  const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     api.getCostByTool()
       .then(setData)
-      .catch((e) => setError(e.message))
+      .catch((e: Error) => setError(e.message))
       .finally(() => setLoading(false))
   }, [])
 
@@ -44,7 +52,7 @@ export default function CostAttribution() {
     )
   }
 
-  const chartData = data.map((d) => ({
+  const chartData: ChartDatum[] = data.map((d) => ({
     name: d.tool_name.replace(/_/g, ' '),
     raw_name: d.tool_name,
     cost: parseFloat(d.total_cost_usd.toFixed(6)),
@@ -66,7 +74,7 @@ export default function CostAttribution() {
             orientation="left"
             tick={{ fill: '#9ca3af', fontSize: 11 }}
             axisLine={{ stroke: '#374151' }}
-            tickFormatter={(v) => `$${v.toFixed(4)}`}
+            tickFormatter={(v: number) => `$${v.toFixed(4)}`}
           />
           <YAxis
             yAxisId="calls"
@@ -78,7 +86,11 @@ export default function CostAttribution() {
             contentStyle={{ backgroundColor: '#111827', border: '1px solid #374151', borderRadius: '8px' }}
             labelStyle={{ color: '#f9fafb' }}
             itemStyle={{ color: '#d1d5db' }}
-            formatter={(value, name) => name === 'cost' ? [`$${value.toFixed(6)}`, 'Token Cost'] : [value, 'Calls']}
+            formatter={(value, name) =>
+              name === 'cost'
+                ? [`$${Number(value).toFixed(6)}`, 'Token Cost']
+                : [value, 'Calls']
+            }
           />
           <Legend
             wrapperStyle={{ color: '#9ca3af', fontSize: 12 }}

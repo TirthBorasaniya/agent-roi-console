@@ -1,27 +1,28 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api'
+import type { Run } from '../types'
 
-const STATUS_BADGE = {
+const STATUS_BADGE: Record<string, string> = {
   COMPLETED: 'bg-green-900 text-green-300',
   RUNNING: 'bg-yellow-900 text-yellow-300',
   FAILED: 'bg-red-900 text-red-300',
 }
 
-function durationStr(started, completed) {
+function durationStr(started: string, completed: string | null): string {
   if (!completed) return '—'
-  const ms = new Date(completed) - new Date(started)
+  const ms = new Date(completed).getTime() - new Date(started).getTime()
   if (ms < 1000) return `${ms}ms`
   return `${(ms / 1000).toFixed(1)}s`
 }
 
-function shortId(id) {
+function shortId(id: string): string {
   return id.slice(0, 8) + '…'
 }
 
 export default function RunHistory() {
-  const [runs, setRuns] = useState([])
+  const [runs, setRuns] = useState<Run[]>([])
   const [page, setPage] = useState(1)
-  const [error, setError] = useState(null)
+  const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
   const PAGE_SIZE = 10
@@ -30,7 +31,7 @@ export default function RunHistory() {
     setLoading(true)
     api.getRuns(page, PAGE_SIZE)
       .then(setRuns)
-      .catch((e) => setError(e.message))
+      .catch((e: Error) => setError(e.message))
       .finally(() => setLoading(false))
   }, [page])
 

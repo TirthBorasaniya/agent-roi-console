@@ -1,18 +1,31 @@
 import { useState } from 'react'
+import type { ReactNode } from 'react'
 import MetricsSummary from './components/MetricsSummary'
 import ROILedger from './components/ROILedger'
 import CostAttribution from './components/CostAttribution'
 import WorkflowList from './components/WorkflowList'
 import RunHistory from './components/RunHistory'
 
-const NAV_ITEMS = [
+type TabId = 'dashboard' | 'workflows' | 'runs' | 'costs'
+
+interface NavItem {
+  id: TabId
+  label: string
+}
+
+const NAV_ITEMS: NavItem[] = [
   { id: 'dashboard', label: 'Dashboard' },
   { id: 'workflows', label: 'Workflows' },
   { id: 'runs', label: 'Run History' },
   { id: 'costs', label: 'Cost Attribution' },
 ]
 
-function Section({ title, children }) {
+interface SectionProps {
+  title: string
+  children: ReactNode
+}
+
+function Section({ title, children }: SectionProps) {
   return (
     <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
       <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-5">{title}</h2>
@@ -22,7 +35,7 @@ function Section({ title, children }) {
 }
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('dashboard')
+  const [activeTab, setActiveTab] = useState<TabId>('dashboard')
   const [refreshKey, setRefreshKey] = useState(0)
 
   const onRunComplete = () => setRefreshKey((k) => k + 1)
