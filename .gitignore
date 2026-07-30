@@ -1,10 +1,37 @@
-CLAUDE.md
+# ============= Secrets =============
+# .env.* matters as much as .env: .env.local / .env.production would
+# otherwise be committed, since only the bare name was covered before
 .env
+.env.*
+!.env.example
+
+# ============= Local data =============
 data/
+*.db
+*.sqlite
+*.sqlite3
+
+# ============= Python =============
 __pycache__/
 *.pyc
+.venv/
+venv/
+.pytest_cache/
+
+# ============= Node / build output =============
 node_modules/
 dist/
-.venv/
-*.db
+build/
+
+# ============= Editors and OS =============
 .DS_Store
+.idea/
+.vscode/
+
+# ============= Agent / assistant scaffolding =============
+# .claude/settings.local.json is otherwise protected only by a user-global
+# excludes file, which does not travel with the repo
+CLAUDE.md
+.claude/
+.claude/settings.local.json
+.cursorrules

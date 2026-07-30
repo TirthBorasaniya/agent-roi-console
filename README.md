@@ -9,16 +9,16 @@
 ```mermaid
 graph TD
     User["User / Scheduler"]
-    API["FastAPI Backend\n(port 8000)"]
-    DB[(SQLite\nroi_console.db)]
-    LG["LangGraph\nOrchestrator"]
-    Slack["Slack SDK\n(mock if no token)"]
-    Notion["Notion SDK\n(mock if no token)"]
-    CRM["Twenty CRM GraphQL\n(mock if no key)"]
-    LLM["Claude Haiku\n(Anthropic API)"]
-    FE["React Dashboard\n(port 5173)"]
+    API["FastAPI Backend<br/>(port 8000)"]
+    DB[("SQLite<br/>roi_console.db")]
+    LG["LangGraph<br/>Orchestrator"]
+    Slack["Slack SDK<br/>(mock if no token)"]
+    Notion["Notion SDK<br/>(mock if no token)"]
+    CRM["Twenty CRM GraphQL<br/>(mock if no key)"]
+    LLM["Claude Haiku<br/>(Anthropic API)"]
+    FE["React Dashboard<br/>(port 5173)"]
 
-    User -->|POST /api/workflows/{id}/run| API
+    User -->|"POST /api/workflows/{id}/run"| API
     API --> LG
     LG -->|route_query node| LLM
     LG -->|slack_node| Slack
@@ -165,4 +165,4 @@ pytest backend/tests/ -v
 
 ## License
 
-MIT
+MIT — see [LICENSE](LICENSE).
