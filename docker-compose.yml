@@ -2,7 +2,9 @@ services:
   backend:
     build: ./backend
     ports:
-      - "8000:8000"
+      # bound to loopback: every endpoint is unauthenticated and triggering a
+      # run spends real LLM credits, so do not expose this on a shared network
+      - "127.0.0.1:8000:8000"
     env_file:
       - .env
     volumes:
@@ -16,7 +18,7 @@ services:
   frontend:
     build: ./frontend
     ports:
-      - "5173:5173"
+      - "127.0.0.1:5173:5173"
     environment:
       - VITE_API_BASE_URL=http://localhost:8000
     depends_on:

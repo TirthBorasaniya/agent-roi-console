@@ -19,6 +19,42 @@ logger = logging.getLogger(__name__)
 
 FRONTEND_ORIGIN = os.getenv("FRONTEND_ORIGIN", "http://localhost:5173")
 ALLOWED_ORIGINS = [FRONTEND_ORIGIN, "http://localhost:3000", "http://frontend:5173"]
+ALLOW_CREDENTIALS = True
+WILDCARD_ORIGIN = "*"
+
+
+# ============= Configuration Guards =============
+
+def assert_cors_config_safe(
+    allowed_origins: list[str],
+    o_allow_credentials: bool,
+) -> None:
+    """
+    Reject a wildcard CORS origin that is paired with credentialed requests.
+
+    Sending credentials to a wildcard origin is rejected by every browser, so
+    this combination is never usable in practice; it only appears when someone
+    loosens the origin list to debug a CORS error. Failing at startup makes
+    that mistake obvious instead of surfacing as an opaque browser error.
+
+    Parameters
+    ----------
+    allowed_origins : list[str]
+        Origins that will be handed to CORSMiddleware.
+    o_allow_credentials : bool
+        Whether CORSMiddleware is configured to allow credentialed requests.
+
+    Raises
+    ------
+    RuntimeError
+        If any origin is the wildcard while credentials are allowed.
+    """
+    if o_allow_credentials and WILDCARD_ORIGIN in allowed_origins:
+        raise RuntimeError(
+            "refusing to start: FRONTEND_ORIGIN is '*' while CORS credentials "
+            "are enabled. Set FRONTEND_ORIGIN to an explicit origin such as "
+            "http://localhost:5173, or disable ALLOW_CREDENTIALS."
+        )
 
 
 # ============= Lifespan =============
@@ -42,10 +78,13 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# fail fast at import time, before the server binds a port
+assert_cors_config_safe(ALLOWED_ORIGINS, ALLOW_CREDENTIALS)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
-    allow_credentials=True,
+    allow_credentials=ALLOW_CREDENTIALS,
     allow_methods=["*"],
     allow_headers=["*"],
 )
