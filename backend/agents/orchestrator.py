@@ -36,6 +36,43 @@ SYSTEM_PROMPT = (
     "When done, provide a brief summary of what you accomplished."
 )
 
+# token counts attributed to each simulated LLM call when no API key is present.
+# these are fixed constants, not measured usage: demo-mode cost and ROI figures
+# are therefore simulated, and the README says so
+DEMO_ROUTE_INPUT_TOKENS = 150
+DEMO_ROUTE_OUTPUT_TOKENS = 30
+DEMO_SYNTH_INPUT_TOKENS = 50
+DEMO_SYNTH_OUTPUT_TOKENS = 20
+
+# demo-mode tool plan, keyed by the workflow's seeded value_category so the
+# simulated run exercises the connectors that workflow would really use.
+# each entry is a list of steps; each step is one group of tool calls routed to a
+# single tool node, so _should_continue never has to split a step across nodes
+DEMO_TOOL_PLANS: dict[str, list[list[str]]] = {
+    "SUMMARIZATION": [["read_slack_channel"], ["post_slack_message"]],
+    "RESEARCH": [["search_notion"]],
+    "DATA_ENTRY": [["create_notion_page"]],
+    "COORDINATION": [["crm_list_opportunities"], ["post_slack_message"]],
+    "COMMUNICATION": [["post_slack_message"]],
+}
+DEFAULT_DEMO_PLAN: list[list[str]] = [["read_slack_channel"]]
+
+# placeholder arguments for simulated tool calls; the connectors return mock data
+# when their own credentials are absent, so these values are never sent anywhere
+DEMO_TOOL_ARGS: dict[str, dict] = {
+    "read_slack_channel": {"channel_id": "C_DEMO_CHANNEL", "limit": 10},
+    "post_slack_message": {"channel_id": "C_DEMO_CHANNEL", "text": "Automated summary posted by Agent ROI Console."},
+    "search_notion": {"query": "onboarding roadmap"},
+    "create_notion_page": {
+        "parent_id": "demo-parent-page",
+        "title": "Meeting Notes",
+        "content": "Action items and key decisions captured automatically.",
+    },
+    "read_notion_page": {"page_id": "demo-page"},
+    "crm_list_opportunities": {},
+    "crm_search_contacts": {"query": "acme"},
+}
+
 
 # ============= State =============
 
@@ -47,6 +84,100 @@ class AgentState(TypedDict):
     output_tokens: int
     tools_used: list[str]
     output_summary: str
+    demo_step: int
+
+
+# ============= Demo Mode =============
+
+def is_llm_configured() -> bool:
+    """
+    Report whether a usable Anthropic API key is present.
+
+    Returns
+    -------
+    bool
+        True when ANTHROPIC_API_KEY is set to a non-empty value.
+    """
+    return bool(os.getenv("ANTHROPIC_API_KEY", "").strip())
+
+
+def resolve_demo_plan(workflow_id: str) -> list[list[str]]:
+    """
+    Look up the demo tool plan for a workflow from its seeded definition.
+
+    The plan is keyed on the workflow's value_category rather than hardcoded to a
+    single tool, so each seeded workflow exercises the connectors it actually
+    describes and /api/metrics/cost-by-tool reports several distinct tools.
+
+    Parameters
+    ----------
+    workflow_id : str
+        ID of the workflow being run.
+
+    Returns
+    -------
+    list[list[str]]
+        Ordered steps, each a list of tool names routed to one tool node.
+    """
+    conn = get_connection()
+    try:
+        row = conn.execute(
+            "SELECT value_category FROM workflows WHERE id = ?", (workflow_id,)
+        ).fetchone()
+    except sqlite3.Error as exc:
+        logger.warning(f"could not resolve demo plan for {workflow_id}: {exc}")
+        return DEFAULT_DEMO_PLAN
+    finally:
+        conn.close()
+
+    if row is None:
+        return DEFAULT_DEMO_PLAN
+    return DEMO_TOOL_PLANS.get(row["value_category"], DEFAULT_DEMO_PLAN)
+
+
+def build_demo_response(workflow_id: str, demo_step: int) -> AIMessage:
+    """
+    Build the simulated assistant turn used when no LLM key is configured.
+
+    Emits the tool calls for the current step of the workflow's demo plan so the
+    graph routes through the real tool nodes and per-tool usage is recorded. Once
+    the plan is exhausted it returns a plain message with no tool calls, which
+    ends the tool loop and routes to synthesize.
+
+    Parameters
+    ----------
+    workflow_id : str
+        ID of the workflow being run.
+    demo_step : int
+        Number of demo plan steps already executed.
+
+    Returns
+    -------
+    AIMessage
+        Simulated response, with tool_calls only while steps remain.
+    """
+    plan_list = resolve_demo_plan(workflow_id)
+    usage_dict = {
+        "input_tokens": DEMO_ROUTE_INPUT_TOKENS,
+        "output_tokens": DEMO_ROUTE_OUTPUT_TOKENS,
+        "total_tokens": DEMO_ROUTE_INPUT_TOKENS + DEMO_ROUTE_OUTPUT_TOKENS,
+    }
+
+    if demo_step >= len(plan_list):
+        return AIMessage(
+            content="I've processed your request using the available tools.",
+            usage_metadata=usage_dict,
+        )
+
+    tool_calls_list = [
+        {
+            "name": tool_name,
+            "args": DEMO_TOOL_ARGS.get(tool_name, {}),
+            "id": f"demo-{uuid.uuid4()}",
+        }
+        for tool_name in plan_list[demo_step]
+    ]
+    return AIMessage(content="", tool_calls=tool_calls_list, usage_metadata=usage_dict)
 
 
 # ============= LLM =============
@@ -85,20 +216,23 @@ def route_query_node(state: AgentState) -> AgentState:
     AgentState
         Updated state with the LLM response appended and token counts incremented.
     """
-    llm = _build_llm()
-    callbacks_list = build_langfuse_callback()
+    demo_step = state.get("demo_step", 0)
 
-    messages_list = [SystemMessage(content=SYSTEM_PROMPT)] + state["messages"]
-
-    try:
-        response = llm.invoke(messages_list, config={"callbacks": callbacks_list})
-    except Exception as exc:
-        logger.warning(f"llm call failed, using mock response: {exc}")
-        # graceful degradation: return a mock AI response
-        response = AIMessage(
-            content="I've processed your request using the available tools.",
-            usage_metadata={"input_tokens": 150, "output_tokens": 30, "total_tokens": 180},
-        )
+    if not is_llm_configured():
+        # skip the round-trip entirely rather than waiting on a guaranteed 401
+        response = build_demo_response(state["workflow_id"], demo_step)
+        demo_step += 1
+    else:
+        llm = _build_llm()
+        callbacks_list = build_langfuse_callback()
+        messages_list = [SystemMessage(content=SYSTEM_PROMPT)] + state["messages"]
+        try:
+            response = llm.invoke(messages_list, config={"callbacks": callbacks_list})
+        except Exception as exc:
+            logger.warning(f"llm call failed, using simulated response: {exc}")
+            # graceful degradation: fall back to the same demo path
+            response = build_demo_response(state["workflow_id"], demo_step)
+            demo_step += 1
 
     usage = getattr(response, "usage_metadata", {}) or {}
     in_tokens = usage.get("input_tokens", 0)
@@ -109,6 +243,7 @@ def route_query_node(state: AgentState) -> AgentState:
         "input_tokens": state["input_tokens"] + in_tokens,
         "output_tokens": state["output_tokens"] + out_tokens,
         "tools_used": state["tools_used"],
+        "demo_step": demo_step,
     }
 
 
@@ -168,6 +303,29 @@ def _tool_node_wrapper(tool_node: ToolNode, tool_label: str):
     return _inner
 
 
+def _build_demo_summary(tools_used_list: list[str]) -> str:
+    """
+    Compose the simulated run summary, naming the tools that actually executed.
+
+    Parameters
+    ----------
+    tools_used_list : list[str]
+        Tool names invoked during this run.
+
+    Returns
+    -------
+    str
+        Human-readable summary for the run record.
+    """
+    if not tools_used_list:
+        return "Workflow run completed in demo mode. No tools were invoked."
+    tool_names_str = ", ".join(sorted(set(tools_used_list)))
+    return (
+        f"Demo run completed. Simulated {len(tools_used_list)} tool call(s) "
+        f"via mocked connectors: {tool_names_str}."
+    )
+
+
 def synthesize_node(state: AgentState) -> AgentState:
     """
     Summarize the run outcome, compute ROI, and write the RunRecord to the DB.
@@ -182,27 +340,33 @@ def synthesize_node(state: AgentState) -> AgentState:
     AgentState
         Final state with output_summary populated.
     """
-    llm_raw = ChatAnthropic(
-        model="claude-haiku-4-5-20251001",
-        api_key=os.getenv("ANTHROPIC_API_KEY", "demo-key"),
-        max_tokens=512,
-    )
-    callbacks_list = build_langfuse_callback()
+    tools_used_list = state["tools_used"]
 
-    synthesis_prompt_list = [
-        SystemMessage(content="Summarize in 1-2 sentences what was accomplished in this workflow run."),
-    ] + state["messages"]
+    if not is_llm_configured():
+        summary_text = _build_demo_summary(tools_used_list)
+        in_tokens, out_tokens = DEMO_SYNTH_INPUT_TOKENS, DEMO_SYNTH_OUTPUT_TOKENS
+    else:
+        llm_raw = ChatAnthropic(
+            model="claude-haiku-4-5-20251001",
+            api_key=os.getenv("ANTHROPIC_API_KEY", "demo-key"),
+            max_tokens=512,
+        )
+        callbacks_list = build_langfuse_callback()
 
-    try:
-        summary_response = llm_raw.invoke(synthesis_prompt_list, config={"callbacks": callbacks_list})
-        summary_text = summary_response.content
-        usage = getattr(summary_response, "usage_metadata", {}) or {}
-        in_tokens = usage.get("input_tokens", 0)
-        out_tokens = usage.get("output_tokens", 0)
-    except Exception as exc:
-        logger.warning(f"synthesis llm call failed: {exc}")
-        summary_text = "Workflow run completed. Tasks executed via available tools."
-        in_tokens, out_tokens = 50, 20
+        synthesis_prompt_list = [
+            SystemMessage(content="Summarize in 1-2 sentences what was accomplished in this workflow run."),
+        ] + state["messages"]
+
+        try:
+            summary_response = llm_raw.invoke(synthesis_prompt_list, config={"callbacks": callbacks_list})
+            summary_text = summary_response.content
+            usage = getattr(summary_response, "usage_metadata", {}) or {}
+            in_tokens = usage.get("input_tokens", 0)
+            out_tokens = usage.get("output_tokens", 0)
+        except Exception as exc:
+            logger.warning(f"synthesis llm call failed: {exc}")
+            summary_text = _build_demo_summary(tools_used_list)
+            in_tokens, out_tokens = DEMO_SYNTH_INPUT_TOKENS, DEMO_SYNTH_OUTPUT_TOKENS
 
     total_input = state["input_tokens"] + in_tokens
     total_output = state["output_tokens"] + out_tokens
@@ -394,6 +558,7 @@ def run_workflow(workflow_id: str, run_id: str, user_input: str) -> dict:
         "output_tokens": 0,
         "tools_used": [],
         "output_summary": "",
+        "demo_step": 0,
     }
 
     final_state = graph.invoke(initial_state)
