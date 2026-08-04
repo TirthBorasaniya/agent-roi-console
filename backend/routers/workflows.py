@@ -6,11 +6,12 @@ import uuid
 from datetime import datetime, timezone
 
 # ============= Third-Party =============
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
 # ============= Local =============
 from database import get_connection
 from models import RunResponse, RunTriggerRequest, WorkflowCreate, WorkflowResponse
+from services.rate_limiter import enforce_run_rate_limit
 
 # ============= Constants =============
 router = APIRouter(prefix="/api/workflows", tags=["workflows"])
@@ -74,13 +75,18 @@ def get_workflow(workflow_id: str) -> WorkflowResponse:
         conn.close()
 
 
-@router.post("/{workflow_id}/run", response_model=RunResponse)
+@router.post(
+    "/{workflow_id}/run",
+    response_model=RunResponse,
+    dependencies=[Depends(enforce_run_rate_limit)],
+)
 def trigger_workflow_run(workflow_id: str, payload: RunTriggerRequest = RunTriggerRequest()) -> RunResponse:
     """
     Trigger a workflow run synchronously via the LangGraph orchestrator.
 
     Creates an initial RunRecord with status RUNNING, executes the graph,
-    then returns the completed run record.
+    then returns the completed run record. Rate limited per client IP, since
+    this endpoint is unauthenticated and spawns work on every call.
     """
     conn = get_connection()
     try:
