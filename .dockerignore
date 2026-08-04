@@ -2,12 +2,23 @@
 .gitignore
 .venv
 venv
-data
+
+# local SQLite state. must use **/ : a bare "data" matches only the context
+# root, which previously let backend/data/roi_console.db (created by local
+# pytest runs) get baked into the image and shipped with the deployment
+**/data/
+**/*.db
+**/*.sqlite
+**/*.sqlite3
+
 **/node_modules
 **/dist
+# generated at build time by the frontend stage, never copied from the host
+backend/static
 **/__pycache__
 **/*.pyc
 **/.pytest_cache
+
 .DS_Store
 .claude
 CLAUDE.md
@@ -16,3 +27,4 @@ CLAUDE.md
 !.env.example
 README.md
 LICENSE
+docker-compose.yml
