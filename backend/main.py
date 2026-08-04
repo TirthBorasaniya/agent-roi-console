@@ -4,10 +4,12 @@
 import logging
 import os
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 # ============= Third-Party =============
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 # ============= Local =============
 from database import init_db
@@ -21,6 +23,10 @@ FRONTEND_ORIGIN = os.getenv("FRONTEND_ORIGIN", "http://localhost:5173")
 ALLOWED_ORIGINS = [FRONTEND_ORIGIN, "http://localhost:3000", "http://frontend:5173"]
 ALLOW_CREDENTIALS = True
 WILDCARD_ORIGIN = "*"
+
+# built frontend bundle, copied here by the deployment image. absent during
+# local two-service development, where Vite serves the app instead
+STATIC_DIR = Path(__file__).parent / "static"
 
 
 # ============= Configuration Guards =============
@@ -101,3 +107,15 @@ app.include_router(roi.router)
 def health_check() -> dict:
     """Return a simple health status for Docker healthchecks."""
     return {"status": "ok"}
+
+
+# ============= Static Frontend =============
+
+# mounted last so the API routers, /docs and /health above take precedence.
+# html=True serves index.html at "/", collapsing the stack to one service and
+# one origin; skipped when the bundle is absent so local dev still works
+if STATIC_DIR.is_dir():
+    app.mount("/", StaticFiles(directory=STATIC_DIR, html=True), name="frontend")
+    logger.info(f"serving frontend bundle from {STATIC_DIR}")
+else:
+    logger.info("no frontend bundle found, running API-only (use Vite for the UI)")

@@ -22,6 +22,8 @@ venv/
 node_modules/
 dist/
 build/
+# frontend bundle copied in by the deployment image, never committed
+backend/static/
 
 # ============= Editors and OS =============
 .DS_Store

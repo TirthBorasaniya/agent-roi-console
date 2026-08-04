@@ -9,7 +9,10 @@ import type {
   WorkflowCreate,
 } from './types'
 
-const BASE_URL: string = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
+// default to same-origin: in production FastAPI serves this bundle itself, so
+// relative paths keep the deployment to one service and make CORS moot. the
+// Vite dev server proxies /api to the backend, so dev needs no override either
+const BASE_URL: string = import.meta.env.VITE_API_BASE_URL ?? ''
 
 async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
   const res = await fetch(`${BASE_URL}${path}`, {

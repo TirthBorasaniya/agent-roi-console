@@ -1,3 +1,6 @@
+# Two-service stack for local development, with hot-reload-friendly separation.
+# The deployed build is a single service instead: see the root Dockerfile, which
+# bundles the frontend into FastAPI so there is one port and one origin.
 services:
   backend:
     build: ./backend
@@ -19,7 +22,7 @@ services:
     build: ./frontend
     ports:
       - "127.0.0.1:5173:5173"
-    environment:
-      - VITE_API_BASE_URL=http://localhost:8000
+    # no VITE_API_BASE_URL: the bundle uses same-origin relative paths and
+    # nginx proxies /api to the backend service, so dev matches production
     depends_on:
       - backend
