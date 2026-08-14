@@ -1,0 +1,24 @@
+# Render Blueprint: single free web service running the root Dockerfile.
+# The image serves both the API and the built React bundle, so there is one
+# service and one origin. No secrets are set -- the app runs in demo mode with
+# mocked Slack/Notion/Twenty connectors and no LLM key.
+services:
+  - type: web
+    name: agent-roi-console
+    runtime: docker
+    plan: free
+    region: oregon
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    envVars:
+      # must match the assigned origin; the startup guard rejects "*".
+      # requests are same-origin anyway, so this is defence in depth
+      - key: FRONTEND_ORIGIN
+        value: https://agent-roi-console.onrender.com
+      # generous enough for a visitor to try every workflow, low enough to cap
+      # a public unauthenticated endpoint that spawns work
+      - key: RUN_RATE_LIMIT
+        value: "20"
+      - key: RUN_RATE_WINDOW_SECONDS
+        value: "60"
