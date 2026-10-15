@@ -82,6 +82,37 @@ services:
       timeout: 5s
       retries: 10
 
+  # ============= Console API and dashboard =============
+  api:
+    <<: *app
+    command: ["python", "-m", "roiconsole.api.app"]
+    environment:
+      <<: *app-env
+      API_HOST: 0.0.0.0
+      API_PORT: "8000"
+      GATEWAY_URL: http://gateway:8090/v1
+      SLACK_MCP_URL: http://slack-mcp:8101/mcp
+      NOTION_MCP_URL: http://notion-mcp:8102/mcp
+      CRM_MCP_URL: http://crm-mcp:8103/mcp
+      ROI_STATIC_DIR: /app/frontend/dist
+      GUARD_ENABLED: ${GUARD_ENABLED:-true}
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      gateway:
+        condition: service_healthy
+      slack-mcp:
+        condition: service_started
+      notion-mcp:
+        condition: service_started
+      crm-mcp:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
   # ============= Self-hosted Twenty CRM (profile: crm) =============
   # follows Twenty's published packages/twenty-docker/docker-compose.yml, with pinned tags
   twenty-db:

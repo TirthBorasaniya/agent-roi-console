@@ -1,0 +1,12 @@
+version: 1
+# ROI guard (SPEC 6): every interval, for each workflow with at least min_runs runs in
+# the trailing window, a negative net ROI first switches the workflow to its cheapest
+# path that meets the success bar; if ROI is still negative over the next min_runs
+# runs, the workflow is paused and a Slack alert is posted.
+interval_s: 900
+min_runs: 20
+window_hours: 168
+path_success_bar: 0.9
+# path statistics for choosing the downgrade target come from E2 (routed configuration);
+# when E2 has not run, trailing runs per path are used if each has at least this many
+min_runs_per_path_for_stats: 5

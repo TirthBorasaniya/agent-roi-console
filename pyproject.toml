@@ -58,12 +58,7 @@ default-groups = ["dev"]
 line-length = 100
 target-version = "py311"
 src = ["backend/src", "scripts", "tests"]
-# the legacy flat backend modules are excluded until P5 replaces and deletes them
-extend-exclude = [
-    "frontend", ".cache", ".tmp", ".kube",
-    "backend/agents", "backend/connectors", "backend/routers", "backend/services",
-    "backend/tests", "backend/main.py", "backend/database.py", "backend/models.py",
-]
+extend-exclude = ["frontend", ".cache", ".tmp", ".kube"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP", "SIM", "N"]

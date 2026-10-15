@@ -1,0 +1,6 @@
+version: 1
+# Sensitivity grid for ROI (SPEC 6): minutes_per_task as a multiple of the baseline,
+# and labor rates in USD per hour.
+sensitivity:
+  minutes_multipliers: [0.25, 0.5, 1.0, 1.5]
+  labor_rates_usd_per_hour: [25, 55, 100]

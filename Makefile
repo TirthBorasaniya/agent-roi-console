@@ -10,7 +10,7 @@ COMPOSE := docker compose
 	loadtest results clean tasks reset-sandbox seed-notion mcp-slack mcp-notion mcp-crm \
 	up-crm up-selfhosted up-full seed-twenty reset-twenty check-twenty download-model \
 	measure-selfhosted gateway eval-gateway eval-steps routing-table eval-tasks live-tasks \
-	test-integration-compose
+	test-integration-compose eval-roi eval-guard api inventory eval
 
 # ============= Environment =============
 setup:
@@ -95,6 +95,20 @@ routing-table:
 
 eval-tasks:
 	$(PY) scripts/eval_tasks.py
+
+eval-roi:
+	$(PY) scripts/eval_roi.py
+
+eval-guard:
+	$(PY) scripts/eval_guard.py
+
+inventory:
+	$(PY) scripts/inventory.py
+
+eval: eval-steps eval-tasks eval-roi eval-gateway eval-guard inventory
+
+api:
+	$(PY) -m roiconsole.api.app
 
 live-tasks:
 	$(PY) scripts/run_live_tasks.py

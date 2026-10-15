@@ -1,0 +1,17 @@
+version: 1
+# E5: the guard on simulated run streams (SPEC 7.2). Each stream inserts synthetic
+# production runs one at a time and evaluates the guard after every run.
+llm_cost_usd_per_run: 0.002
+streams:
+  - name: negative
+    workflow_id: crm_pipeline
+    segments: [{runs: 60, success: false}]
+    expected: [{action: downgrade, at_run: 20}, {action: pause, at_run: 40}]
+  - name: positive
+    workflow_id: slack_digest
+    segments: [{runs: 60, success: true}]
+    expected: []
+  - name: recovery
+    workflow_id: notion_search
+    segments: [{runs: 20, success: false}, {runs: 40, success: true}]
+    expected: [{action: downgrade, at_run: 20}, {action: recover, at_run: 40}]

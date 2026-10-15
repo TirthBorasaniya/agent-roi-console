@@ -1,0 +1,5 @@
+version: 1
+# E3: ROI, ROI ratio, sensitivity grid, and break-even per workflow from E2 runs (SPEC 7.2).
+source_results: e2_tasks
+# the sensitivity grid is reported for this model configuration on every path
+sensitivity_model_config: auto
