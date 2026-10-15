@@ -12,6 +12,7 @@ x-app: &app
       required: false
   environment: &app-env
     ROI_DATA_DIR: /app/data
+    ROI_CONNECTOR_MODE: ${ROI_CONNECTOR_MODE:-}
     REDIS_URL: redis://redis:6379/0
     TWENTY_API_URL: http://twenty-server:3000
     SELFHOSTED_BASE_URL: http://llamacpp:8080/v1

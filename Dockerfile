@@ -27,6 +27,7 @@ COPY configs ./configs
 COPY eval ./eval
 COPY scripts ./scripts
 COPY results ./results
+COPY tests ./tests
 
 RUN mkdir -p /app/data /app/models
 

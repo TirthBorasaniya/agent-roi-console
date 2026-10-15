@@ -1,0 +1,14 @@
+version: 1
+# E2: held-out task success, cost per successful task, and latency for each execution
+# path, routed versus each single-model configuration (SPEC 7.2).
+split: heldout
+repeats: 1
+paths: [pipeline, planner_executor, react]
+model_configs:
+  - auto
+  - selfhosted/qwen2.5-1.5b-instruct-q4_k_m
+  - groq/openai/gpt-oss-20b
+  - groq/openai/gpt-oss-120b
+  - groq/qwen/qwen3.8-27b
+  - anthropic/claude-haiku-5-5
+checkpoint: eval/checkpoints/e2.jsonl

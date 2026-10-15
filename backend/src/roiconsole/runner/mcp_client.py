@@ -220,6 +220,38 @@ class McpToolbox:
             sessions_dict[server] = client_session
         return cls(sessions_dict, recorder)
 
+    @classmethod
+    async def in_memory(
+        cls, stack: AsyncExitStack, backends: Any, recorder: ToolCallRecorder | None = None
+    ) -> "McpToolbox":
+        """
+        Connect to in-process servers over in-memory MCP sessions (same protocol, no processes).
+
+        Parameters
+        ----------
+        stack : AsyncExitStack
+            Owns the sessions.
+        backends : ConnectorBackends
+            Backends the in-process servers use.
+        recorder : ToolCallRecorder or None
+            Persists tool calls.
+        """
+        from mcp.shared.memory import create_connected_server_and_client_session
+
+        from roiconsole.mcp_servers import crm_server, notion_server, slack_server
+
+        factory_dict = {
+            "slack": slack_server.create_server,
+            "notion": notion_server.create_server,
+            "crm": crm_server.create_server,
+        }
+        sessions_dict = {}
+        for server, factory in factory_dict.items():
+            sessions_dict[server] = await stack.enter_async_context(
+                create_connected_server_and_client_session(factory(backends)._mcp_server)
+            )
+        return cls(sessions_dict, recorder)
+
     async def list_tools(self) -> dict[str, ToolSpec]:
         """Return every tool keyed by `server.tool`, listing each server once."""
         if self._specs_dict:

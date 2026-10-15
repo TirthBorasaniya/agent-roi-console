@@ -1,0 +1,17 @@
+version: 1
+# E1: step success per step class per model on the development split (SPEC 7.2).
+# Generates configs/routing_table.yaml through scripts/build_routing_table.py.
+split: dev
+repeats: 1
+# every candidate model; a model without a price (the self-hosted model before its
+# throughput is measured) is skipped and listed in the results notes
+models:
+  - selfhosted/qwen2.5-1.5b-instruct-q4_k_m
+  - groq/openai/gpt-oss-20b
+  - groq/openai/gpt-oss-120b
+  - groq/qwen/qwen3.8-27b
+  - anthropic/claude-haiku-5-5
+# step classes measured by full ReAct task runs and by planner validity
+agent_step_class: agent_tool_use
+planning_step_class: planning
+checkpoint: eval/checkpoints/e1.jsonl

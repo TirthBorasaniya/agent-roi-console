@@ -9,7 +9,8 @@ COMPOSE := docker compose
 .PHONY: setup lint format test test-integration test-live up down logs demo eval benchmark \
 	loadtest results clean tasks reset-sandbox seed-notion mcp-slack mcp-notion mcp-crm \
 	up-crm up-selfhosted up-full seed-twenty reset-twenty check-twenty download-model \
-	measure-selfhosted gateway eval-gateway
+	measure-selfhosted gateway eval-gateway eval-steps routing-table eval-tasks live-tasks \
+	test-integration-compose
 
 # ============= Environment =============
 setup:
@@ -83,6 +84,27 @@ gateway:
 
 eval-gateway:
 	$(PY) scripts/eval_gateway.py
+
+# ============= Evaluation =============
+eval-steps:
+	$(PY) scripts/eval_steps.py
+	$(PY) scripts/build_routing_table.py
+
+routing-table:
+	$(PY) scripts/build_routing_table.py
+
+eval-tasks:
+	$(PY) scripts/eval_tasks.py
+
+live-tasks:
+	$(PY) scripts/run_live_tasks.py
+
+test-integration-compose:
+	ROI_CONNECTOR_MODE=dryrun $(COMPOSE) up -d --build redis slack-mcp notion-mcp crm-mcp
+	$(COMPOSE) run --rm -e ROI_CONNECTOR_MODE=dryrun -e ROI_IT_MCP=http \
+		-e SLACK_MCP_URL=http://slack-mcp:8101/mcp -e NOTION_MCP_URL=http://notion-mcp:8102/mcp \
+		-e CRM_MCP_URL=http://crm-mcp:8103/mcp slack-mcp \
+		sh -c "uv pip install --python /opt/venv/bin/python pytest==9.1.1 pytest-asyncio==1.4.0 respx==0.23.1 fakeredis==2.40.0 && python -m pytest -m integration tests/integration/test_workflows_all_paths.py"
 
 # ============= Connectors =============
 seed-notion:
