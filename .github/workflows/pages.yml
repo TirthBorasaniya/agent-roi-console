@@ -1,0 +1,70 @@
+name: pages
+
+# Publishes the read-only static demo: the dashboard built in static mode with a
+# snapshot exported from the committed results files. No backend, no keys.
+on:
+  push:
+    branches: [main]
+    paths: ["results/**", "frontend/**", "scripts/export_demo_data.py", "configs/workflows/**"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    outputs:
+      ready: ${{ steps.results.outputs.ready }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check that real results exist
+        id: results
+        run: |
+          if [ -f results/e2_tasks.json ]; then echo "ready=true" >> "$GITHUB_OUTPUT";
+          else echo "::notice::results/e2_tasks.json not committed yet; nothing to publish"; echo "ready=false" >> "$GITHUB_OUTPUT"; fi
+      - uses: astral-sh/setup-uv@v6
+        if: steps.results.outputs.ready == 'true'
+        with:
+          version: "0.13.0"
+      - name: Export demo data from results
+        if: steps.results.outputs.ready == 'true'
+        env:
+          ROI_ENV_FILE: ""
+          PYTHONPATH: backend/src
+        run: |
+          uv sync --frozen --python 3.11 --no-dev
+          uv run --frozen python scripts/export_demo_data.py
+      - uses: actions/setup-node@v4
+        if: steps.results.outputs.ready == 'true'
+        with:
+          node-version: "20.19.4"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Build static dashboard
+        if: steps.results.outputs.ready == 'true'
+        working-directory: frontend
+        run: |
+          npm ci --no-audit --no-fund
+          npm run build:demo
+      - uses: actions/upload-pages-artifact@v3
+        if: steps.results.outputs.ready == 'true'
+        with:
+          path: frontend/dist
+
+  deploy:
+    needs: build
+    if: needs.build.outputs.ready == 'true'
+    runs-on: ubuntu-24.04
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

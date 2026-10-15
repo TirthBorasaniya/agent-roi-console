@@ -10,7 +10,7 @@ COMPOSE := docker compose
 	loadtest results clean tasks reset-sandbox seed-notion mcp-slack mcp-notion mcp-crm \
 	up-crm up-selfhosted up-full seed-twenty reset-twenty check-twenty download-model \
 	measure-selfhosted gateway eval-gateway eval-steps routing-table eval-tasks live-tasks \
-	test-integration-compose eval-roi eval-guard api inventory eval test-frontend
+	test-integration-compose eval-roi eval-guard api inventory eval test-frontend demo-data demo
 
 # ============= Environment =============
 setup:
@@ -124,6 +124,15 @@ test-integration-compose:
 		-e SLACK_MCP_URL=http://slack-mcp:8101/mcp -e NOTION_MCP_URL=http://notion-mcp:8102/mcp \
 		-e CRM_MCP_URL=http://crm-mcp:8103/mcp slack-mcp \
 		sh -c "uv pip install --python /opt/venv/bin/python pytest==9.1.1 pytest-asyncio==1.4.0 respx==0.23.1 fakeredis==2.40.0 && python -m pytest -m integration tests/integration/test_workflows_all_paths.py"
+
+# ============= Static Demo =============
+demo-data:
+	$(PY) scripts/export_demo_data.py
+
+# builds the read-only demo from committed results and serves it on http://127.0.0.1:4173;
+# the live console (make up) is on http://127.0.0.1:8000
+demo: demo-data
+	cd frontend && npm run build:demo && npx vite preview --host 127.0.0.1 --port 4173
 
 # ============= Connectors =============
 seed-notion:

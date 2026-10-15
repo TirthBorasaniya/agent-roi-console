@@ -57,3 +57,6 @@ CLAUDE.md
 eval/checkpoints/
 # build-mode file for the static demo, contains no secrets
 !frontend/.env.demo
+
+# static demo snapshot, regenerated from results/ by scripts/export_demo_data.py
+frontend/public/demo-data/
