@@ -1,0 +1,31 @@
+name: integration
+
+# MCP servers as processes on dry-run fixtures with the oracle model, and the gateway
+# against Redis 8. No secrets are needed, so the nightly run is meaningful on forks too.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 6 * * *"
+
+jobs:
+  integration:
+    runs-on: ubuntu-24.04
+    services:
+      redis:
+        image: redis:8.2.1
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      ROI_ENV_FILE: ""
+      PYTHONPATH: backend/src
+      ROI_CONNECTOR_MODE: dryrun
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.13.0"
+      - run: uv sync --frozen --python 3.11
+      - name: Integration tests
+        run: uv run --frozen pytest -m integration
