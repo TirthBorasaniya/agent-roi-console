@@ -7,7 +7,7 @@ PY := uv run --frozen python
 COMPOSE := docker compose
 
 .PHONY: setup lint format test test-integration test-live up down logs demo eval benchmark \
-	loadtest results clean tasks reset-sandbox
+	loadtest results clean tasks reset-sandbox seed-notion mcp-slack mcp-notion mcp-crm
 
 # ============= Environment =============
 setup:
@@ -39,6 +39,19 @@ tasks:
 
 reset-sandbox:
 	$(PY) scripts/reset_sandbox.py --task $(TASK)
+
+# ============= Connectors =============
+seed-notion:
+	$(PY) scripts/seed_notion.py
+
+mcp-slack:
+	$(PY) -m roiconsole.mcp_servers.slack_server --transport streamable-http --port 8101
+
+mcp-notion:
+	$(PY) -m roiconsole.mcp_servers.notion_server --transport streamable-http --port 8102
+
+mcp-crm:
+	$(PY) -m roiconsole.mcp_servers.crm_server --transport streamable-http --port 8103
 
 # ============= Housekeeping =============
 clean:

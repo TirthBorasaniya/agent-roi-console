@@ -5,16 +5,8 @@ import logging
 from typing import Any, Protocol
 
 # ============= Local =============
-from roiconsole.sandbox.store import SANDBOX_BOT_USER, SandboxStore
 from roiconsole.validators.library import VALIDATORS_DICT
-from roiconsole.validators.state import (
-    CrmActivity,
-    EndState,
-    NotionBlock,
-    NotionPage,
-    SlackMessage,
-    ValidatorResult,
-)
+from roiconsole.validators.state import EndState, ValidatorResult
 from roiconsole.workflows.schema import TaskDefinition, WorkflowDefinition
 from roiconsole.workflows.templating import TemplateRenderError, render_value
 
@@ -31,62 +23,6 @@ class StateReader(Protocol):
     def snapshot(self, since: float) -> EndState:
         """Return the end state for objects created at or after `since` (epoch seconds)."""
         ...
-
-
-class SandboxStateReader:
-    """
-    Read end state from the SQLite sandbox store.
-
-    Parameters
-    ----------
-    store : SandboxStore
-        Store written by the sandbox MCP backends.
-    """
-
-    def __init__(self, store: SandboxStore) -> None:
-        self._store = store
-
-    def snapshot(self, since: float) -> EndState:
-        """Return messages, pages with blocks, and activities created since `since`."""
-        state = EndState()
-        for channel in self._store.list_channels():
-            for row in self._store.channel_messages(channel["id"], since):
-                state.slack_messages.append(
-                    SlackMessage(
-                        channel=channel["name"],
-                        ts=row["ts"],
-                        text=row["text"],
-                        user=row["user"],
-                        o_bot=bool(row["o_bot"]) and row["user"] == SANDBOX_BOT_USER,
-                        thread_ts=row["thread_ts"],
-                    )
-                )
-        with self._store.connect() as conn:
-            database_rows = conn.execute("SELECT id, name FROM notion_databases").fetchall()
-        for database in database_rows:
-            for page in self._store.database_pages(database["id"], since):
-                block_list = [
-                    NotionBlock(
-                        type=b["type"],
-                        text=b["text"],
-                        checked=None if b["checked"] is None else bool(b["checked"]),
-                    )
-                    for b in self._store.page_blocks(page["id"])
-                ]
-                state.notion_pages.append(
-                    NotionPage(
-                        database=database["name"],
-                        page_id=page["id"],
-                        title=page["title"],
-                        properties=page["properties"],
-                        blocks=block_list,
-                    )
-                )
-        for activity in self._store.activities(since):
-            state.crm_activities.append(
-                CrmActivity(contact_id=activity["contact_id"], note=activity["note"])
-            )
-        return state
 
 
 # ============= Engine =============

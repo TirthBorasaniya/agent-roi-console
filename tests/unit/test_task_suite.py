@@ -11,7 +11,8 @@ import yaml
 # ============= Local =============
 from roiconsole.common.settings import get_settings
 from roiconsole.evaluation.task_suite import build_suite, split_task_ids
-from roiconsole.sandbox.fixtures import load_sandbox_fixtures, resolve_inputs
+from roiconsole.mcp_servers.backends.factory import build_backends
+from roiconsole.sandbox.fixtures import resolve_inputs
 from roiconsole.validators.engine import check_task_validators
 from roiconsole.workflows.registry import load_splits, load_tasks, load_workflows, tasks_for
 
@@ -61,9 +62,10 @@ def test_step_checks_target_llm_steps():
         assert set(task.expected.step_checks) == llm_step_set, task.task_id
 
 
-def test_fixtures_load_and_every_ref_resolves(sandbox_store):
+def test_fixtures_load_and_every_ref_resolves():
+    backends = build_backends()
     for task in load_tasks().values():
-        refs_dict = load_sandbox_fixtures(sandbox_store, task.fixtures)
+        refs_dict = backends.reset(task.fixtures)
         used_set = set(REF_RE.findall(yaml.safe_dump(task.model_dump())))
         assert used_set <= set(refs_dict), (task.task_id, used_set - set(refs_dict))
         inputs_dict = resolve_inputs(task, refs_dict)
@@ -80,10 +82,9 @@ def test_crm_tasks_have_unique_largest_deal():
         assert amount_list.count(max(amount_list)) == 1
 
 
-def test_reset_clears_previous_task_state(sandbox_store):
+def test_reset_clears_previous_task_state():
+    backends = build_backends()
     tasks_dict = load_tasks()
-    load_sandbox_fixtures(sandbox_store, tasks_dict["crm_pipeline_001"].fixtures)
-    load_sandbox_fixtures(sandbox_store, tasks_dict["slack_digest_001"].fixtures)
-    assert (
-        sandbox_store.opportunities(["NEW", "SCREENING", "MEETING", "PROPOSAL", "CUSTOMER"]) == []
-    )
+    backends.reset(tasks_dict["crm_pipeline_001"].fixtures)
+    backends.reset(tasks_dict["slack_digest_001"].fixtures)
+    assert backends.crm.list_opportunities(None) == {"opportunities": []}

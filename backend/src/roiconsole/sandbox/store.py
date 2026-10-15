@@ -42,9 +42,6 @@ SANDBOX_TABLES_DDL = [
     """CREATE TABLE IF NOT EXISTS crm_activities (
         id TEXT PRIMARY KEY, contact_id TEXT NOT NULL, note TEXT NOT NULL, run_id TEXT,
         created_at REAL NOT NULL)""",
-    """CREATE TABLE IF NOT EXISTS idempotency (
-        key TEXT PRIMARY KEY, server TEXT NOT NULL, tool TEXT NOT NULL, result TEXT NOT NULL,
-        created_at REAL NOT NULL)""",
 ]
 RESETTABLE_TABLES = (
     "slack_channels",
@@ -56,7 +53,6 @@ RESETTABLE_TABLES = (
     "crm_people",
     "crm_opportunities",
     "crm_activities",
-    "idempotency",
 )
 SANDBOX_BOT_USER = "roi-console-bot"
 
@@ -409,28 +405,3 @@ class SandboxStore:
                 "SELECT * FROM crm_activities WHERE created_at >= ? ORDER BY created_at", (since,)
             ).fetchall()
         return [dict(r) for r in rows]
-
-    # ============= Idempotency =============
-
-    def idempotent_result(self, key: str) -> dict[str, Any] | None:
-        """Return the stored result for an idempotency key, if any."""
-        with self.connect() as conn:
-            row = conn.execute("SELECT result FROM idempotency WHERE key = ?", (key,)).fetchone()
-        return json.loads(row["result"]) if row else None
-
-    def store_idempotent_result(
-        self, key: str, server: str, tool: str, result_dict: dict[str, Any]
-    ) -> dict[str, Any]:
-        """
-        Store a result under a key unless one exists, and return the winning result.
-
-        Uses INSERT OR IGNORE so two concurrent writers with the same key agree on
-        the first stored result.
-        """
-        with self.connect() as conn:
-            conn.execute(
-                "INSERT OR IGNORE INTO idempotency VALUES (?, ?, ?, ?, ?)",
-                (key, server, tool, json.dumps(result_dict), time.time()),
-            )
-            row = conn.execute("SELECT result FROM idempotency WHERE key = ?", (key,)).fetchone()
-        return json.loads(row["result"])

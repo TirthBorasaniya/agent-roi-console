@@ -38,6 +38,8 @@ def isolated_settings(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setenv("ROI_DATA_DIR", str(tmp_path / "data"))
     monkeypatch.setenv("ROI_RESULTS_DIR", str(tmp_path / "results"))
     monkeypatch.setenv("ROI_CONNECTOR_MODE", "dryrun")
+    # FastMCP reads ./.env from the working directory, so tests run outside the repo root
+    monkeypatch.chdir(tmp_path)
     settings_module.get_settings.cache_clear()
     registry.clear_caches()
     yield
