@@ -137,7 +137,9 @@ def test_slack_message_posted_ignores_human_and_wrong_location_messages():
 
 
 def test_message_mentions_terms_normalizes_case_markdown_and_dashes():
-    state = EndState(slack_messages=[bot_message("c", "*Postgres 16* chosen — 30 day retention")])
+    state = EndState(
+        slack_messages=[bot_message("c", f"*Postgres 16* chosen {chr(0x2014)} 30 day retention")]
+    )
     assert message_mentions_terms(state, "c", ["postgres 16", "30-day retention"]).passed
     assert not message_mentions_terms(state, "c", ["MySQL"]).passed
 

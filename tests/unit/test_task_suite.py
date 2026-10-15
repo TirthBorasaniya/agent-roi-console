@@ -88,3 +88,11 @@ def test_reset_clears_previous_task_state():
     backends.reset(tasks_dict["crm_pipeline_001"].fixtures)
     backends.reset(tasks_dict["slack_digest_001"].fixtures)
     assert backends.crm.list_opportunities(None) == {"opportunities": []}
+
+
+def test_resets_are_deterministic_for_demo_replay():
+    backends = build_backends()
+    task = load_tasks()["crm_pipeline_003"]
+    first = backends.reset(task.fixtures)
+    second = backends.reset(task.fixtures)
+    assert first == second

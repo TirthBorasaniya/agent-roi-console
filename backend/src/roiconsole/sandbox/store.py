@@ -3,9 +3,7 @@
 # ============= Standard Library =============
 import json
 import sqlite3
-import threading
 import time
-import uuid
 from collections.abc import Iterator
 from contextlib import contextmanager
 from datetime import UTC, datetime
@@ -39,6 +37,7 @@ SANDBOX_TABLES_DDL = [
     """CREATE TABLE IF NOT EXISTS crm_opportunities (
         id TEXT PRIMARY KEY, name TEXT NOT NULL, stage TEXT NOT NULL, amount REAL NOT NULL,
         currency TEXT NOT NULL, company_id TEXT, point_of_contact_id TEXT, close_date TEXT)""",
+    "CREATE TABLE IF NOT EXISTS sandbox_sequence (name TEXT PRIMARY KEY, value INTEGER NOT NULL)",
     """CREATE TABLE IF NOT EXISTS crm_activities (
         id TEXT PRIMARY KEY, contact_id TEXT NOT NULL, note TEXT NOT NULL, run_id TEXT,
         created_at REAL NOT NULL)""",
@@ -53,8 +52,12 @@ RESETTABLE_TABLES = (
     "crm_people",
     "crm_opportunities",
     "crm_activities",
+    "sandbox_sequence",
 )
 SANDBOX_BOT_USER = "roi-console-bot"
+# sandbox timestamps count up from a fixed epoch so ids and ts values are identical
+# on every reset of the same task; demo replay keys model requests on them
+TS_EPOCH = 1_700_000_000
 
 
 # ============= Store =============
@@ -78,8 +81,6 @@ class SandboxStore:
 
     def __init__(self, path: Path) -> None:
         self.path = path
-        self._ts_lock = threading.Lock()
-        self._last_ts = 0.0
         path.parent.mkdir(parents=True, exist_ok=True)
         with self.connect() as conn:
             conn.execute("PRAGMA journal_mode=WAL")
@@ -103,14 +104,36 @@ class SandboxStore:
             for table in RESETTABLE_TABLES:
                 conn.execute(f"DELETE FROM {table}")
 
+    def _next(self, name: str, conn: sqlite3.Connection | None = None) -> int:
+        """
+        Increment and return a named sequence, atomically across processes.
+
+        Pass the caller's open connection when inside one: a second connection
+        would wait on the first one's write lock.
+        """
+        if conn is None:
+            with self.connect() as own_conn:
+                return self._next(name, own_conn)
+        conn.execute(
+            "INSERT INTO sandbox_sequence VALUES (?, 1) "
+            "ON CONFLICT(name) DO UPDATE SET value = value + 1",
+            (name,),
+        )
+        row = conn.execute("SELECT value FROM sandbox_sequence WHERE name = ?", (name,)).fetchone()
+        return int(row["value"])
+
+    def new_id(self, kind: str, conn: sqlite3.Connection | None = None) -> str:
+        """
+        Return a deterministic id such as "page-000007".
+
+        Ids depend only on insertion order since the last reset, so replaying the
+        same task produces the same ids, unlike random UUIDs.
+        """
+        return f"{kind}-{self._next(kind, conn):06d}"
+
     def next_ts(self) -> str:
-        """Return a strictly increasing Slack-style timestamp string."""
-        with self._ts_lock:
-            candidate = round(time.time(), 6)
-            if candidate <= self._last_ts:
-                candidate = round(self._last_ts + 0.000001, 6)
-            self._last_ts = candidate
-        return f"{candidate:.6f}"
+        """Return a strictly increasing Slack-style timestamp, deterministic per reset."""
+        return f"{TS_EPOCH + self._next('ts')}.000100"
 
     # ============= Slack =============
 
@@ -120,7 +143,7 @@ class SandboxStore:
             row = conn.execute("SELECT id FROM slack_channels WHERE name = ?", (name,)).fetchone()
             if row:
                 return row["id"]
-            channel_id = f"C{uuid.uuid4().hex[:10].upper()}"
+            channel_id = self.new_id("C", conn).replace("-", "").upper()
             conn.execute("INSERT INTO slack_channels VALUES (?, ?)", (channel_id, name))
             return channel_id
 
@@ -191,7 +214,7 @@ class SandboxStore:
             row = conn.execute("SELECT id FROM notion_databases WHERE name = ?", (name,)).fetchone()
             if row:
                 return row["id"]
-            database_id = str(uuid.uuid4())
+            database_id = self.new_id("database", conn)
             conn.execute(
                 "INSERT INTO notion_databases VALUES (?, ?, ?, ?)",
                 (database_id, name, title_property, json.dumps(schema_dict)),
@@ -218,7 +241,7 @@ class SandboxStore:
         run_id: str | None = None,
     ) -> str:
         """Insert a page and return its id."""
-        page_id = str(uuid.uuid4())
+        page_id = self.new_id("page")
         with self.connect() as conn:
             conn.execute(
                 "INSERT INTO notion_pages VALUES (?, ?, ?, ?, 0, ?, ?)",
@@ -259,7 +282,7 @@ class SandboxStore:
             position = int(row["pos"]) + 1
             id_list = []
             for block in block_list:
-                block_id = str(uuid.uuid4())
+                block_id = self.new_id("block", conn)
                 checked = block.get("checked")
                 conn.execute(
                     "INSERT INTO notion_blocks VALUES (?, ?, ?, ?, ?, ?, ?)",
@@ -291,14 +314,14 @@ class SandboxStore:
         self, name: str, domain: str | None = None, company_id: str | None = None
     ) -> str:
         """Insert a company and return its id."""
-        company_id = company_id or str(uuid.uuid4())
+        company_id = company_id or self.new_id("company")
         with self.connect() as conn:
             conn.execute("INSERT INTO crm_companies VALUES (?, ?, ?)", (company_id, name, domain))
         return company_id
 
     def add_person(self, person_dict: dict[str, Any], person_id: str | None = None) -> str:
         """Insert a person and return their id."""
-        person_id = person_id or str(uuid.uuid4())
+        person_id = person_id or self.new_id("person")
         with self.connect() as conn:
             conn.execute(
                 "INSERT INTO crm_people VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
@@ -358,7 +381,7 @@ class SandboxStore:
 
     def add_opportunity(self, opportunity_dict: dict[str, Any], opp_id: str | None = None) -> str:
         """Insert an opportunity and return its id."""
-        opp_id = opp_id or str(uuid.uuid4())
+        opp_id = opp_id or self.new_id("opportunity")
         with self.connect() as conn:
             conn.execute(
                 "INSERT INTO crm_opportunities VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
@@ -390,7 +413,7 @@ class SandboxStore:
 
     def add_activity(self, contact_id: str, note: str, run_id: str | None = None) -> str:
         """Insert a CRM activity note and return its id."""
-        activity_id = str(uuid.uuid4())
+        activity_id = self.new_id("activity")
         with self.connect() as conn:
             conn.execute(
                 "INSERT INTO crm_activities VALUES (?, ?, ?, ?, ?)",

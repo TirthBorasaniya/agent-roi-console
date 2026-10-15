@@ -13,15 +13,16 @@ from roiconsole.validators.state import EndState, NotionPage, SlackMessage, Vali
 DEFAULT_AMOUNT_REL_TOL = 0.005
 AMOUNT_RE = re.compile(r"(\d[\d,]*(?:\.\d+)?)\s?([kKmM])?(?![\w])")
 AMOUNT_MULTIPLIER_DICT = {"k": 1_000.0, "m": 1_000_000.0}
+# typographic quotes, dashes, and the no-break space, as code points so the source stays ASCII
 PUNCTUATION_MAP = str.maketrans(
     {
-        "‘": "'",
-        "’": "'",
-        "“": '"',
-        "”": '"',
-        "–": "-",
-        "—": "-",
-        " ": " ",
+        chr(0x2018): "'",
+        chr(0x2019): "'",
+        chr(0x201C): '"',
+        chr(0x201D): '"',
+        chr(0x2013): "-",
+        chr(0x2014): "-",
+        chr(0x00A0): " ",
     }
 )
 
