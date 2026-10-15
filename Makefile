@@ -9,7 +9,7 @@ COMPOSE := docker compose
 .PHONY: setup lint format test test-integration test-live up down logs demo eval benchmark \
 	loadtest results clean tasks reset-sandbox seed-notion mcp-slack mcp-notion mcp-crm \
 	up-crm up-selfhosted up-full seed-twenty reset-twenty check-twenty download-model \
-	measure-selfhosted
+	measure-selfhosted gateway eval-gateway
 
 # ============= Environment =============
 setup:
@@ -76,6 +76,13 @@ download-model:
 
 measure-selfhosted:
 	$(PY) scripts/measure_selfhosted.py
+
+# ============= Gateway =============
+gateway:
+	$(PY) -m roiconsole.gateway.app
+
+eval-gateway:
+	$(PY) scripts/eval_gateway.py
 
 # ============= Connectors =============
 seed-notion:

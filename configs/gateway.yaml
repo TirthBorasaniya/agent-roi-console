@@ -1,0 +1,38 @@
+version: 1
+# Gateway behavior (SPEC 5). Secrets (API keys) come from the environment only.
+providers:
+  groq:
+    kind: openai_compatible
+    base_url: https://api.groq.com/openai/v1
+    api_key_env: GROQ_API_KEY
+  selfhosted:
+    kind: openai_compatible
+    base_url_env: SELFHOSTED_BASE_URL
+  anthropic:
+    kind: anthropic
+    api_key_env: ANTHROPIC_API_KEY
+calls:
+  timeout_s: 30
+  retries: 2
+  # jittered exponential backoff between retries of the same model
+  backoff_base_s: 0.5
+  backoff_max_s: 4.0
+breaker:
+  failure_threshold: 5
+  window_s: 60
+  half_open_after_s: 30
+routing:
+  min_step_success: 0.9
+  # requests naming this model are routed; any other priced model id is a single-model call
+  routed_model: auto
+cache:
+  exact_ttl_s: 86400
+  semantic_distance_threshold: 0.1
+  semantic_ttl_s: 86400
+  embedding_model: BAAI/bge-small-en-v1.5
+rate_limits:
+  # token buckets per workflow, sized to stay inside Groq developer-tier limits
+  default:
+    requests_per_minute: 60
+    tokens_per_minute: 60000
+  max_wait_s: 30

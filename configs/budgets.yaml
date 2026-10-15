@@ -1,0 +1,12 @@
+version: 1
+# Spend limits enforced by the gateway (SPEC 5.3). A run whose remaining budget cannot
+# cover the estimated cost of the chosen model is downgraded to a cheaper candidate that
+# meets the success bar, or halted with budget_exhausted.
+defaults:
+  per_run_usd: 0.05
+  per_workflow_daily_usd: 5.00
+workflows:
+  slack_digest: {}
+  notion_search: {}
+  meeting_notes: {}
+  crm_pipeline: {}

@@ -1,0 +1,28 @@
+version: 1
+# E4: gateway behavior under failure (SPEC 7.2). Faults are injected on the primary model
+# only; the gateway must fall back to the next candidate. provider_mode "real" calls the
+# hosted providers (keys required); "fake" uses deterministic in-process providers.
+provider_mode: real
+step_class: extraction
+# candidates in fallback order; the first one receives the injected faults
+models:
+  - groq/openai/gpt-oss-20b
+  - groq/openai/gpt-oss-120b
+  - anthropic/claude-haiku-5-5
+fallback:
+  requests_per_scenario: 30
+  max_tokens: 60
+  scenarios:
+    - {name: baseline, kind: none, rate: 0.0}
+    - {name: http_500_all, kind: http_500, rate: 1.0}
+    - {name: http_500_half, kind: http_500, rate: 0.5}
+    - {name: http_429_all, kind: http_429, rate: 1.0}
+    - {name: timeout_all, kind: timeout, rate: 1.0}
+budget:
+  # enforcement is a deterministic mechanism, verified on fake providers with exact prices
+  requests_per_run: 50
+  per_run_usd_list: [0.0005, 0.002, 0.01]
+  max_tokens: 200
+cache:
+  query_set: eval/gateway/repeated_queries.yaml
+  max_tokens: 40

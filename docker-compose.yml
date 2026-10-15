@@ -62,6 +62,25 @@ services:
     ports:
       - "127.0.0.1:8103:8103"
 
+  # ============= Model gateway =============
+  gateway:
+    <<: *app
+    command: ["python", "-m", "roiconsole.gateway.app"]
+    environment:
+      <<: *app-env
+      GATEWAY_HOST: 0.0.0.0
+      GATEWAY_PORT: "8090"
+    ports:
+      - "127.0.0.1:8090:8090"
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8090/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
   # ============= Self-hosted Twenty CRM (profile: crm) =============
   # follows Twenty's published packages/twenty-docker/docker-compose.yml, with pinned tags
   twenty-db:

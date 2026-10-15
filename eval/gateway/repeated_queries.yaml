@@ -1,0 +1,57 @@
+version: 1
+description: 'Generated repeated-query set for E4: exact repeats, paraphrases with the same answer, and
+  near misses with a different answer.'
+exact_repeats: 2
+groups:
+- answer: security
+  base: Where can I find the security rules I need to follow?
+  paraphrases:
+  - What security rules do I have to follow, and where are they?
+  - Which documents explain the security rules we follow?
+  near_misses:
+  - answer: billing
+    query: Where can I find the billing rules I need to follow?
+  - answer: legal
+    query: Where can I find the legal rules I need to follow?
+- answer: onboarding
+  base: Which pages cover onboarding for new engineers?
+  paraphrases:
+  - What pages explain onboarding for new engineers?
+  - Which docs cover how new engineers are onboarded?
+  near_misses:
+  - answer: hiring
+    query: Which pages cover hiring for new engineers?
+- answer: billing
+  base: What billing policies do we have written down?
+  paraphrases:
+  - Which billing policies are written down?
+  - Do we have written billing policies, and which ones?
+  near_misses:
+  - answer: legal
+    query: What legal policies do we have written down?
+  - answer: hiring
+    query: What hiring policies do we have written down?
+- answer: infrastructure
+  base: Which infrastructure runbooks exist?
+  paraphrases:
+  - What runbooks exist for infrastructure?
+  - Which runbooks do we have for our infrastructure?
+  near_misses:
+  - answer: security
+    query: Which security runbooks exist?
+- answer: hiring
+  base: Which pages explain how we run hiring?
+  paraphrases:
+  - What pages describe how we run hiring?
+  - Where is it explained how our hiring works?
+  near_misses:
+  - answer: onboarding
+    query: Which pages explain how we run onboarding?
+- answer: legal
+  base: Which legal policies should I check before signing anything?
+  paraphrases:
+  - Before signing anything, which legal policies should I check?
+  - What legal policies do I need to check before I sign?
+  near_misses:
+  - answer: billing
+    query: Which billing policies should I check before signing anything?
