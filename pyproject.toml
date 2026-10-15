@@ -1,0 +1,89 @@
+[project]
+name = "roiconsole"
+version = "2.0.0"
+description = "Agent ROI Console: run AI workflow automations over MCP connectors, route model calls through a cost-aware gateway, and act on measured ROI."
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.11,<3.12"
+dependencies = [
+    "anthropic==1.14.0",
+    "fastapi==0.143.1",
+    "fastembed==0.9.0",
+    "httpx==0.28.1",
+    "jinja2==3.1.6",
+    "langchain-core==1.6.10",
+    "langchain-mcp-adapters==0.3.2",
+    "langchain-openai==1.7.2",
+    "langgraph==1.2.15",
+    "mcp==1.30.0",
+    "notion-client==3.1.0",
+    "numpy==2.4.6",
+    "openai==3.31.0",
+    "opentelemetry-api==1.45.1",
+    "opentelemetry-exporter-otlp-proto-http==1.45.1",
+    "opentelemetry-sdk==1.45.1",
+    "prometheus-client==0.26.0",
+    "pydantic==2.14.1",
+    "pydantic-settings==2.16.0",
+    "pyyaml==6.0.3",
+    "redis==8.1.0",
+    "redisvl==0.28.0",
+    "slack-sdk==3.45.0",
+    "uvicorn[standard]==0.54.0",
+]
+
+[dependency-groups]
+dev = [
+    "detect-secrets==1.5.0",
+    "fakeredis==2.40.0",
+    "pre-commit==4.7.0",
+    "pytest==9.1.1",
+    "pytest-asyncio==1.4.0",
+    "respx==0.23.1",
+    "ruff==0.17.0",
+]
+
+[build-system]
+requires = ["hatchling==1.27.0"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["backend/src/roiconsole"]
+
+[tool.uv]
+default-groups = ["dev"]
+
+# ============= Ruff =============
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["backend/src", "scripts", "tests"]
+# the legacy flat backend modules are excluded until P5 replaces and deletes them
+extend-exclude = [
+    "frontend", ".cache", ".tmp", ".kube",
+    "backend/agents", "backend/connectors", "backend/routers", "backend/services",
+    "backend/tests", "backend/main.py", "backend/database.py", "backend/models.py",
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM", "N"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["roiconsole"]
+
+# ============= Pytest =============
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["backend/src", "."]
+asyncio_mode = "auto"
+markers = [
+    "unit: fast tests with no external services",
+    "integration: tests that start MCP servers or other local processes",
+    "e2e: tests against the full compose stack",
+    "slow: tests that take more than a few seconds",
+    "gpu: tests that need a GPU",
+    "live: manual tests against the real Slack, Notion, and Twenty workspaces",
+]
+# confcutdir keeps collection inside tests/, so pytest never stats repo-root files such as .env
+addopts = "--confcutdir=tests -m 'not integration and not e2e and not slow and not gpu and not live'"
+filterwarnings = ["ignore::DeprecationWarning"]

@@ -48,3 +48,10 @@ backend/static/
 /mlruns/
 /recordings/
 *.log
+
+# ============= Planning and assistant files (never committed) =============
+.planning/
+CLAUDE.md
+.claude/
+/results/*.tmp
+eval/checkpoints/
