@@ -9,7 +9,6 @@ models:
   - selfhosted/qwen2.5-1.5b-instruct-q4_k_m
   - groq/openai/gpt-oss-20b
   - groq/openai/gpt-oss-120b
-  - groq/qwen/qwen3.8-27b
   - anthropic/claude-haiku-5-5
 # step classes measured by full ReAct task runs and by planner validity
 agent_step_class: agent_tool_use

@@ -130,7 +130,7 @@ See `DECISIONS.md`. The main ones: workflows run as YAML-declared steps so the p
 ## Limitations
 
 - Human baselines are assumptions. No workflow has been timed yet (`docs/baselines.md`); every ROI figure depends on them, which is why the sensitivity grid and break-even minutes are reported next to it.
-- Two of the SPEC's Groq models (`llama-3.1-8b-instant`, `llama-3.3-70b-versatile`) were retired for non-enterprise accounts on 2026-08-16 and are replaced by `qwen/qwen3.8-27b` and `anthropic/claude-haiku-5-5` (D-012).
+- Two of the SPEC's Groq models (`llama-3.1-8b-instant`, `llama-3.3-70b-versatile`) were shut down on 2026-08-16 and are replaced by `openai/gpt-oss-20b` (fast roles) and `openai/gpt-oss-120b` (strong roles), alongside `anthropic/claude-haiku-5-5` (D-012).
 - E1 measures each step class on 5 to 10 development tasks per model, so routing decisions rest on wide intervals.
 - The task suite is generated from templates. It tests whether outputs carry the required facts, decisions, and records, not prose quality.
 - The self-hosted model is the public Qwen2.5-1.5B-Instruct Q4_K_M until the distilled student from Spec 06 is published; results name the model served.

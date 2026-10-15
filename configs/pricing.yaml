@@ -18,14 +18,6 @@ models:
     output_per_mtok: 0.60
     source: https://console.groq.com/docs/models
     as_of: 2026-10-14
-  groq/qwen/qwen3.8-27b:
-    provider: groq
-    provider_model: qwen/qwen3.8-27b
-    input_per_mtok: 0.80
-    output_per_mtok: 4.00
-    source: https://console.groq.com/docs/models
-    as_of: 2026-10-14
-    notes: Groq preview model, the replacement Groq recommends for the retired llama-3.3-70b-versatile.
   anthropic/claude-haiku-5-5:
     provider: anthropic
     provider_model: claude-haiku-5-5

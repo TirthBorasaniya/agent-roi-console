@@ -9,6 +9,5 @@ model_configs:
   - selfhosted/qwen2.5-1.5b-instruct-q4_k_m
   - groq/openai/gpt-oss-20b
   - groq/openai/gpt-oss-120b
-  - groq/qwen/qwen3.8-27b
   - anthropic/claude-haiku-5-5
 checkpoint: eval/checkpoints/e2.jsonl

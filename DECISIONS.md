@@ -80,7 +80,8 @@ Consequences: E5 shows downgrade at run 20 and pause at run 40 on a negative str
 ## D-012: Model candidates replace the retired Groq Llama models
 Status: accepted (2026-10-14)
 Context: Groq shut down `llama-3.1-8b-instant` and `llama-3.3-70b-versatile` for free and developer tiers on 2026-08-16; neither has a published price.
-Decision: candidates are the self-hosted 1.5B model, `openai/gpt-oss-20b`, `openai/gpt-oss-120b`, `qwen/qwen3.8-27b` (Groq's recommended successor for the 70B), and `claude-haiku-5-5`, since the repository already depended on Anthropic.
+Decision: `openai/gpt-oss-20b` takes the fast roles and `openai/gpt-oss-120b` the strong roles. Candidates are the self-hosted 1.5B model, those two, and `claude-haiku-5-5`, since the repository already depended on Anthropic. The `qwen/qwen3.8-27b` candidate added earlier is removed (its role is covered by `openai/gpt-oss-120b`), and `.planning/SPEC.md` section 7.2 is updated to match (2026-10-15).
+Judge model: no part of the code uses a separate judge, because every validator is deterministic. Where one is required later, it is `qwen/qwen3.6-27b`, a Groq Preview model: Preview models are for evaluation only, can change or be withdrawn at short notice, and are not priced in `configs/pricing.yaml` until a judge exists. Groq's deprecations page listed `qwen/qwen3.6-27b` as shut down on 2026-09-14 when this was researched, so its availability must be checked before use.
 Alternatives: keeping the retired ids (rejected: calls would fail); dropping Anthropic (rejected: SPEC keeps it when the repo used it).
 Consequences: E1 and E2 tables list the substituted models; the README states the substitution.
 
