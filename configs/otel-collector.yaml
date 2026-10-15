@@ -1,0 +1,18 @@
+# OpenTelemetry collector: receives OTLP from the gateway and runner, prints spans,
+# and forwards them to Langfuse when LANGFUSE_OTLP_ENDPOINT and its auth header are set.
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 0.0.0.0:4318
+processors:
+  batch: {}
+exporters:
+  debug:
+    verbosity: basic
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [debug]

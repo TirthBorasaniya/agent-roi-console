@@ -1,28 +1,186 @@
-# Two-service stack for local development, with hot-reload-friendly separation.
-# The deployed build is a single service instead: see the root Dockerfile, which
-# bundles the frontend into FastAPI so there is one port and one origin.
-services:
-  backend:
-    build: ./backend
-    ports:
-      # bound to loopback: every endpoint is unauthenticated and triggering a
-      # run spends real LLM credits, so do not expose this on a shared network
-      - "127.0.0.1:8000:8000"
-    env_file:
-      - .env
-    volumes:
-      - ./data:/app/data
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+# Agent ROI Console stack. Default services run the console on fixtures with no keys.
+# Profiles: "crm" adds self-hosted Twenty (server, worker, Postgres, Redis);
+# "selfhosted" adds the llama.cpp server and a one-shot model download.
+# Every port binds to loopback: endpoints are unauthenticated and some spend LLM credits.
+name: roiconsole
 
-  frontend:
-    build: ./frontend
+x-app: &app
+  build: .
+  image: roiconsole-app:2.0.0
+  env_file:
+    - path: .env
+      required: false
+  environment: &app-env
+    ROI_DATA_DIR: /app/data
+    REDIS_URL: redis://redis:6379/0
+    TWENTY_API_URL: http://twenty-server:3000
+    SELFHOSTED_BASE_URL: http://llamacpp:8080/v1
+    OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+  volumes:
+    - app-data:/app/data
+  restart: unless-stopped
+
+services:
+  # ============= Shared infrastructure =============
+  redis:
+    # Redis 8 ships the query engine RedisVL needs for the semantic cache
+    image: redis:8.2.1
     ports:
-      - "127.0.0.1:5173:5173"
-    # no VITE_API_BASE_URL: the bundle uses same-origin relative paths and
-    # nginx proxies /api to the backend service, so dev matches production
+      - "127.0.0.1:6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.130.0
+    command: ["--config=/etc/otelcol/config.yaml"]
+    volumes:
+      - ./configs/otel-collector.yaml:/etc/otelcol/config.yaml:ro
+    ports:
+      - "127.0.0.1:4318:4318"
+    restart: unless-stopped
+
+  # ============= MCP connector servers =============
+  slack-mcp:
+    <<: *app
+    command: ["python", "-m", "roiconsole.mcp_servers.slack_server", "--transport", "streamable-http", "--host", "0.0.0.0", "--port", "8101"]
+    ports:
+      - "127.0.0.1:8101:8101"
+
+  notion-mcp:
+    <<: *app
+    command: ["python", "-m", "roiconsole.mcp_servers.notion_server", "--transport", "streamable-http", "--host", "0.0.0.0", "--port", "8102"]
+    ports:
+      - "127.0.0.1:8102:8102"
+
+  crm-mcp:
+    <<: *app
+    command: ["python", "-m", "roiconsole.mcp_servers.crm_server", "--transport", "streamable-http", "--host", "0.0.0.0", "--port", "8103"]
+    ports:
+      - "127.0.0.1:8103:8103"
+
+  # ============= Self-hosted Twenty CRM (profile: crm) =============
+  # follows Twenty's published packages/twenty-docker/docker-compose.yml, with pinned tags
+  twenty-db:
+    profiles: ["crm"]
+    image: postgres:16.10
+    environment:
+      POSTGRES_DB: default
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${TWENTY_PG_PASSWORD:-postgres}
+    volumes:
+      - twenty-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: pg_isready -U postgres -h localhost -d postgres
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  twenty-redis:
+    profiles: ["crm"]
+    image: redis:8.2.1
+    command: ["--maxmemory-policy", "noeviction"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  twenty-server:
+    profiles: ["crm"]
+    # v2.43.0 publishes linux/amd64 and linux/arm64 images
+    image: twentycrm/twenty:v2.43.0
+    volumes:
+      - twenty-local-data:/app/packages/twenty-server/.local-storage
+    ports:
+      - "127.0.0.1:3000:3000"
+    environment: &twenty-env
+      NODE_PORT: 3000
+      PG_DATABASE_URL: postgres://postgres:${TWENTY_PG_PASSWORD:-postgres}@twenty-db:5432/default
+      SERVER_URL: ${TWENTY_SERVER_URL:-http://localhost:3000}
+      REDIS_URL: redis://twenty-redis:6379
+      STORAGE_TYPE: local
+      ENCRYPTION_KEY: ${TWENTY_ENCRYPTION_KEY:-}
+      APP_SECRET: ${TWENTY_ENCRYPTION_KEY:-}
     depends_on:
-      - backend
+      twenty-db:
+        condition: service_healthy
+      twenty-redis:
+        condition: service_healthy
+    healthcheck:
+      test: curl --fail http://localhost:3000/healthz
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    restart: unless-stopped
+
+  twenty-worker:
+    profiles: ["crm"]
+    image: twentycrm/twenty:v2.43.0
+    command: ["yarn", "worker:prod"]
+    volumes:
+      - twenty-local-data:/app/packages/twenty-server/.local-storage
+    environment:
+      <<: *twenty-env
+      DISABLE_DB_MIGRATIONS: "true"
+      DISABLE_CRON_JOBS_REGISTRATION: "true"
+    depends_on:
+      twenty-db:
+        condition: service_healthy
+      twenty-server:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ============= Self-hosted model (profile: selfhosted) =============
+  model-init:
+    <<: *app
+    profiles: ["selfhosted"]
+    command: ["python", "scripts/download_model.py", "--dest-dir", "/models"]
+    volumes:
+      - models:/models
+    restart: "no"
+
+  llamacpp:
+    profiles: ["selfhosted"]
+    image: ghcr.io/ggml-org/llama.cpp:server-b11243
+    command:
+      - "-m"
+      - "/models/qwen2.5-1.5b-instruct-q4_k_m.gguf"
+      - "--alias"
+      - "qwen2.5-1.5b-instruct-q4_k_m"
+      - "--host"
+      - "0.0.0.0"
+      - "--port"
+      - "8080"
+      - "--parallel"
+      - "2"
+      - "--ctx-size"
+      - "8192"
+      - "--threads"
+      - "8"
+      - "--metrics"
+      - "--jinja"
+    volumes:
+      - models:/models:ro
+    ports:
+      - "127.0.0.1:8081:8080"
+    depends_on:
+      model-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+    restart: unless-stopped
+
+volumes:
+  app-data:
+  models:
+  twenty-db-data:
+  twenty-local-data:

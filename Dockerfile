@@ -1,21 +1,17 @@
-# Single-service deployment image: builds the React bundle, then serves it from
-# FastAPI so the whole app is one container, one port and one origin.
-# Local development still uses the two-service docker-compose.yml.
+# Application image for the console API, gateway, MCP servers, and scripts.
+# One image, several compose services: each service picks its command.
 
-# ============= Stage 1: build the frontend =============
-FROM node:20-slim AS frontend
+# ============= Stage 1: Python environment =============
+FROM python:3.11.13-slim AS app
 
-WORKDIR /build
+COPY --from=ghcr.io/astral-sh/uv:0.13.0 /uv /usr/local/bin/uv
 
-COPY frontend/package.json frontend/package-lock.json* ./
-RUN npm ci
-
-COPY frontend/ ./
-RUN npm run build
-
-
-# ============= Stage 2: backend + bundled frontend =============
-FROM python:3.11-slim
+ENV UV_PROJECT_ENVIRONMENT=/opt/venv \
+    UV_COMPILE_BYTECODE=1 \
+    UV_LINK_MODE=copy \
+    PYTHONPATH=/app/backend/src:/app \
+    PATH=/opt/venv/bin:$PATH \
+    ROI_ENV_FILE=
 
 WORKDIR /app
 
@@ -23,18 +19,16 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends curl \
     && rm -rf /var/lib/apt/lists/*
 
-COPY backend/requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+COPY pyproject.toml uv.lock README.md ./
+RUN uv sync --frozen --no-dev --no-install-project
 
-COPY backend/ ./
+COPY backend/src ./backend/src
+COPY configs ./configs
+COPY eval ./eval
+COPY scripts ./scripts
+COPY results ./results
 
-# StaticFiles picks this up automatically via STATIC_DIR
-COPY --from=frontend /build/dist ./static
+RUN mkdir -p /app/data /app/models
 
-RUN mkdir -p /app/data
-
-# PORT is injected by most PaaS platforms; default keeps local runs unchanged
-ENV PORT=8000
 EXPOSE 8000
-
-CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT}"]
+CMD ["python", "-m", "roiconsole.mcp_servers.slack_server", "--transport", "streamable-http", "--host", "0.0.0.0"]

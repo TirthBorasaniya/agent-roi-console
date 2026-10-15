@@ -1,0 +1,51 @@
+version: 1
+currency: USD
+as_of: 2026-10-14
+# Prices are USD per million tokens. Hosted prices come from the provider pages
+# below. The self-hosted price is computed, never typed in: see `selfhosted`.
+models:
+  groq/openai/gpt-oss-20b:
+    provider: groq
+    provider_model: openai/gpt-oss-20b
+    input_per_mtok: 0.075
+    output_per_mtok: 0.30
+    source: https://console.groq.com/docs/models
+    as_of: 2026-10-14
+  groq/openai/gpt-oss-120b:
+    provider: groq
+    provider_model: openai/gpt-oss-120b
+    input_per_mtok: 0.15
+    output_per_mtok: 0.60
+    source: https://console.groq.com/docs/models
+    as_of: 2026-10-14
+  groq/qwen/qwen3.8-27b:
+    provider: groq
+    provider_model: qwen/qwen3.8-27b
+    input_per_mtok: 0.80
+    output_per_mtok: 4.00
+    source: https://console.groq.com/docs/models
+    as_of: 2026-10-14
+    notes: Groq preview model, the replacement Groq recommends for the retired llama-3.3-70b-versatile.
+  anthropic/claude-haiku-5-5:
+    provider: anthropic
+    provider_model: claude-haiku-5-5
+    input_per_mtok: 0.10
+    output_per_mtok: 0.50
+    source: https://platform.claude.com/docs/en/about-claude/pricing
+    as_of: 2026-10-14
+    notes: Price for prompts up to 100K tokens; every prompt in this console is far below that.
+  selfhosted/qwen2.5-1.5b-instruct-q4_k_m:
+    provider: selfhosted
+    provider_model: qwen2.5-1.5b-instruct-q4_k_m
+    pricing: computed
+selfhosted:
+  # price per million tokens = host_hour_usd / 3600 / tokens_per_second * 1e6, with
+  # tokens_per_second measured by scripts/measure_selfhosted.py at the configured
+  # parallelism (output tokens for the output price, prompt tokens for the input price)
+  throughput_results: results/selfhosted_throughput.json
+  host_hour_usd: 0.29
+  host_hour_assumption: >-
+    On-demand Linux price of an AWS c7g.2xlarge (8 vCPU Graviton3 arm64, 16 GiB) in us-east-1,
+    the cloud CPU instance closest to the documented Apple Silicon measurement host.
+  host_hour_source: https://instances.vantage.sh/aws/ec2/c7g.2xlarge
+  as_of: 2026-10-14

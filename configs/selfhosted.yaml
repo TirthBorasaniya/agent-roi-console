@@ -1,0 +1,31 @@
+version: 1
+# Self-hosted model served by the llama.cpp server container (SPEC 5.2). Until the
+# distilled 1.5B student GGUF from Spec 06 is published, the public
+# Qwen2.5-1.5B-Instruct Q4_K_M GGUF is served; every result records which file was used.
+model:
+  served_model: selfhosted/qwen2.5-1.5b-instruct-q4_k_m
+  alias: qwen2.5-1.5b-instruct-q4_k_m
+  description: "Qwen2.5-1.5B-Instruct, Q4_K_M GGUF (public fallback until the Spec 06 student is published)"
+  repo: Qwen/Qwen2.5-1.5B-Instruct-GGUF
+  revision: 91cad51170dc346986eccefdc2dd33a9da36ead9
+  filename: qwen2.5-1.5b-instruct-q4_k_m.gguf
+  url: https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/91cad51170dc346986eccefdc2dd33a9da36ead9/qwen2.5-1.5b-instruct-q4_k_m.gguf
+  sha256: 6a1a2eb6d15622bf3c96857206351ba97e1af16c30d7a74ee38970e434e9407e
+  size_bytes: 1117320736
+server:
+  image: ghcr.io/ggml-org/llama.cpp:server-b11243
+  parallel: 2
+  ctx_size: 8192
+  threads: 8
+measurement:
+  # sustained throughput at the configured parallelism: `parallel` concurrent
+  # streams, each issuing requests back to back for `duration_s`
+  duration_s: 300
+  warmup_requests: 2
+  max_tokens: 256
+  temperature: 0.0
+  prompts:
+    - "Summarize the main decisions of a software team meeting about migrating a billing database to Postgres."
+    - "Write a short Slack message announcing a staged rollout of a mobile app release to 10 percent of users."
+    - "Extract the attendees, date, and action items from these notes: Platform sync, March 4. Maya, Omar, Lena. Omar to update the dashboard by Mar 10."
+    - "List three risks of changing a pricing plan for existing customers and one mitigation for each."

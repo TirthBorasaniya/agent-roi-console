@@ -7,7 +7,9 @@ PY := uv run --frozen python
 COMPOSE := docker compose
 
 .PHONY: setup lint format test test-integration test-live up down logs demo eval benchmark \
-	loadtest results clean tasks reset-sandbox seed-notion mcp-slack mcp-notion mcp-crm
+	loadtest results clean tasks reset-sandbox seed-notion mcp-slack mcp-notion mcp-crm \
+	up-crm up-selfhosted up-full seed-twenty reset-twenty check-twenty download-model \
+	measure-selfhosted
 
 # ============= Environment =============
 setup:
@@ -39,6 +41,41 @@ tasks:
 
 reset-sandbox:
 	$(PY) scripts/reset_sandbox.py --task $(TASK)
+
+# ============= Stack =============
+up:
+	$(COMPOSE) up -d --build
+
+up-crm:
+	$(COMPOSE) --profile crm up -d --build
+
+up-selfhosted:
+	$(COMPOSE) --profile selfhosted up -d --build
+
+up-full:
+	$(COMPOSE) --profile crm --profile selfhosted up -d --build
+
+down:
+	$(COMPOSE) --profile crm --profile selfhosted down
+
+logs:
+	$(COMPOSE) logs -f --tail=200
+
+# ============= Twenty and Self-Hosted Model =============
+seed-twenty:
+	$(PY) scripts/seed_twenty.py
+
+reset-twenty:
+	$(PY) scripts/reset_twenty.py --task $(TASK)
+
+check-twenty:
+	$(PY) scripts/check_twenty_schema.py
+
+download-model:
+	$(PY) scripts/download_model.py
+
+measure-selfhosted:
+	$(PY) scripts/measure_selfhosted.py
 
 # ============= Connectors =============
 seed-notion:
