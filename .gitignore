@@ -55,3 +55,5 @@ CLAUDE.md
 .claude/
 /results/*.tmp
 eval/checkpoints/
+# build-mode file for the static demo, contains no secrets
+!frontend/.env.demo

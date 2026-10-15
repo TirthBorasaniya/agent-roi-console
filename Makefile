@@ -10,7 +10,7 @@ COMPOSE := docker compose
 	loadtest results clean tasks reset-sandbox seed-notion mcp-slack mcp-notion mcp-crm \
 	up-crm up-selfhosted up-full seed-twenty reset-twenty check-twenty download-model \
 	measure-selfhosted gateway eval-gateway eval-steps routing-table eval-tasks live-tasks \
-	test-integration-compose eval-roi eval-guard api inventory eval
+	test-integration-compose eval-roi eval-guard api inventory eval test-frontend
 
 # ============= Environment =============
 setup:
@@ -19,6 +19,7 @@ setup:
 	cd frontend && npm ci
 
 lint:
+	cd frontend && npx tsc --noEmit
 	uv run --frozen ruff check .
 	uv run --frozen ruff format --check .
 
@@ -29,6 +30,10 @@ format:
 # ============= Tests =============
 test:
 	ROI_ENV_FILE= uv run --frozen pytest
+	cd frontend && npm test
+
+test-frontend:
+	cd frontend && npx tsc --noEmit && npm test
 
 test-integration:
 	ROI_ENV_FILE= uv run --frozen pytest -m integration
