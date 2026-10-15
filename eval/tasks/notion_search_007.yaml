@@ -1,0 +1,151 @@
+version: 1
+task_id: notion_search_007
+workflow_id: notion_search
+instruction: 'A teammate asked in Slack channel roi-sandbox-questions (thread_ts {{ refs.question_thread
+  }}): "Where can I find the security rules I need to follow?". Query the Notion database knowledge_base
+  using a filter on the Tags multi_select property (allowed tags: billing, hiring, infrastructure, legal,
+  onboarding, security), then reply in that thread with an answer under 120 words that names every relevant
+  page by its exact title and no other pages.'
+inputs:
+  kb_database: knowledge_base
+  question: Where can I find the security rules I need to follow?
+  answer_channel: roi-sandbox-questions
+  question_ts: '{{ refs.question_thread }}'
+  tag_options:
+  - billing
+  - hiring
+  - infrastructure
+  - legal
+  - onboarding
+  - security
+fixtures:
+  slack:
+    threads:
+    - ref: question_thread
+      channel: roi-sandbox-questions
+      messages:
+      - user: Maya
+        text: Where can I find the security rules I need to follow?
+  notion:
+    databases:
+    - name: knowledge_base
+      pages:
+      - ref: page_01
+        title: Backup Retention Matrix
+        properties:
+          Tags:
+          - infrastructure
+          Summary: Database backups are kept 35 days, snapshots 7 days.
+      - ref: page_02
+        title: Incident Disclosure Process
+        properties:
+          Tags:
+          - security
+          Summary: Customer-facing incidents are disclosed within 72 hours.
+      - ref: page_03
+        title: Interview Scorecard Rubric
+        properties:
+          Tags:
+          - hiring
+          Summary: Candidates are scored 1 to 4 on four competencies.
+      - ref: page_04
+        title: Invoice Schedule
+        properties:
+          Tags:
+          - billing
+          Summary: Invoices are issued on the first business day of each month.
+      - ref: page_05
+        title: Dev Environment Setup
+        properties:
+          Tags:
+          - onboarding
+          Summary: Steps to clone the monorepo and run services locally.
+      - ref: page_06
+        title: Access Review Checklist
+        properties:
+          Tags:
+          - security
+          Summary: Admin access is reviewed quarterly by each team lead.
+      - ref: page_07
+        title: Dunning Email Sequence
+        properties:
+          Tags:
+          - billing
+          Summary: Failed payments trigger three reminder emails over 14 days.
+      - ref: page_08
+        title: Laptop Encryption Standard
+        properties:
+          Tags:
+          - security
+          Summary: All laptops use full-disk encryption enforced by MDM.
+      - ref: page_09
+        title: Offer Approval Workflow
+        properties:
+          Tags:
+          - hiring
+          Summary: Offers above band need VP and finance sign-off.
+      - ref: page_10
+        title: Open Source License Policy
+        properties:
+          Tags:
+          - legal
+          Summary: Copyleft licenses need legal review before use.
+expected:
+  validators:
+  - name: slack_message_posted
+    args:
+      channel: roi-sandbox-questions
+      thread_ts: '{{ refs.question_thread }}'
+  - name: message_mentions_terms
+    args:
+      channel: roi-sandbox-questions
+      thread_ts: '{{ refs.question_thread }}'
+      terms: &id001
+      - Incident Disclosure Process
+      - Laptop Encryption Standard
+      - Access Review Checklist
+  - name: message_excludes_terms
+    args:
+      channel: roi-sandbox-questions
+      thread_ts: '{{ refs.question_thread }}'
+      terms: &id002
+      - Interview Scorecard Rubric
+      - Dev Environment Setup
+      - Open Source License Policy
+      - Offer Approval Workflow
+      - Dunning Email Sequence
+      - Backup Retention Matrix
+      - Invoice Schedule
+  step_checks:
+    extract_filter:
+    - check: json_field_equals
+      args:
+        field: tag
+        value: security
+    compose_answer:
+    - check: text_mentions_terms
+      args:
+        terms: *id001
+    - check: text_excludes_terms
+      args:
+        terms: *id002
+  gold_outputs:
+    extract_filter:
+      tag: security
+    query_kb:
+      pages:
+      - title: Incident Disclosure Process
+        properties:
+          Tags:
+          - security
+          Summary: Customer-facing incidents are disclosed within 72 hours.
+      - title: Laptop Encryption Standard
+        properties:
+          Tags:
+          - security
+          Summary: All laptops use full-disk encryption enforced by MDM.
+      - title: Access Review Checklist
+        properties:
+          Tags:
+          - security
+          Summary: Admin access is reviewed quarterly by each team lead.

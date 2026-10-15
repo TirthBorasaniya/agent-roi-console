@@ -1,0 +1,146 @@
+version: 1
+task_id: notion_search_010
+workflow_id: notion_search
+instruction: 'A teammate asked in Slack channel roi-sandbox-questions (thread_ts {{ refs.question_thread
+  }}): "Where is our infrastructure documentation for outages and upgrades?". Query the Notion database
+  knowledge_base using a filter on the Tags multi_select property (allowed tags: billing, hiring, infrastructure,
+  legal, onboarding, security), then reply in that thread with an answer under 120 words that names every
+  relevant page by its exact title and no other pages.'
+inputs:
+  kb_database: knowledge_base
+  question: Where is our infrastructure documentation for outages and upgrades?
+  answer_channel: roi-sandbox-questions
+  question_ts: '{{ refs.question_thread }}'
+  tag_options:
+  - billing
+  - hiring
+  - infrastructure
+  - legal
+  - onboarding
+  - security
+fixtures:
+  slack:
+    threads:
+    - ref: question_thread
+      channel: roi-sandbox-questions
+      messages:
+      - user: Maya
+        text: Where is our infrastructure documentation for outages and upgrades?
+  notion:
+    databases:
+    - name: knowledge_base
+      pages:
+      - ref: page_01
+        title: Access Review Checklist
+        properties:
+          Tags:
+          - security
+          Summary: Admin access is reviewed quarterly by each team lead.
+      - ref: page_02
+        title: Region Failover Plan
+        properties:
+          Tags:
+          - infrastructure
+          Summary: Traffic fails over to the secondary region within 15 minutes.
+      - ref: page_03
+        title: Interview Scorecard Rubric
+        properties:
+          Tags:
+          - hiring
+          Summary: Candidates are scored 1 to 4 on four competencies.
+      - ref: page_04
+        title: Refund Approval Rules
+        properties:
+          Tags:
+          - billing
+          Summary: Refunds above 500 USD need finance approval.
+      - ref: page_05
+        title: Data Processing Agreement
+        properties:
+          Tags:
+          - legal
+          Summary: The standard DPA covers GDPR and CCPA obligations.
+      - ref: page_06
+        title: Password Rotation Policy
+        properties:
+          Tags:
+          - security
+          Summary: Service passwords rotate every 90 days through Vault.
+      - ref: page_07
+        title: Contract Signature Authority
+        properties:
+          Tags:
+          - legal
+          Summary: Only directors may sign contracts above 50,000 USD.
+      - ref: page_08
+        title: Kubernetes Upgrade Runbook
+        properties:
+          Tags:
+          - infrastructure
+          Summary: Clusters upgrade one minor version per quarter.
+      - ref: page_09
+        title: Dev Environment Setup
+        properties:
+          Tags:
+          - onboarding
+          Summary: Steps to clone the monorepo and run services locally.
+      - ref: page_10
+        title: Tax Exemption Handling
+        properties:
+          Tags:
+          - billing
+          Summary: Exempt customers upload certificates before invoicing.
+expected:
+  validators:
+  - name: slack_message_posted
+    args:
+      channel: roi-sandbox-questions
+      thread_ts: '{{ refs.question_thread }}'
+  - name: message_mentions_terms
+    args:
+      channel: roi-sandbox-questions
+      thread_ts: '{{ refs.question_thread }}'
+      terms: &id001
+      - Kubernetes Upgrade Runbook
+      - Region Failover Plan
+  - name: message_excludes_terms
+    args:
+      channel: roi-sandbox-questions
+      thread_ts: '{{ refs.question_thread }}'
+      terms: &id002
+      - Access Review Checklist
+      - Data Processing Agreement
+      - Refund Approval Rules
+      - Password Rotation Policy
+      - Dev Environment Setup
+      - Interview Scorecard Rubric
+      - Contract Signature Authority
+      - Tax Exemption Handling
+  step_checks:
+    extract_filter:
+    - check: json_field_equals
+      args:
+        field: tag
+        value: infrastructure
+    compose_answer:
+    - check: text_mentions_terms
+      args:
+        terms: *id001
+    - check: text_excludes_terms
+      args:
+        terms: *id002
+  gold_outputs:
+    extract_filter:
+      tag: infrastructure
+    query_kb:
+      pages:
+      - title: Kubernetes Upgrade Runbook
+        properties:
+          Tags:
+          - infrastructure
+          Summary: Clusters upgrade one minor version per quarter.
+      - title: Region Failover Plan
+        properties:
+          Tags:
+          - infrastructure
+          Summary: Traffic fails over to the secondary region within 15 minutes.

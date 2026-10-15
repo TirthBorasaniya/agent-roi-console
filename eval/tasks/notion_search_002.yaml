@@ -1,0 +1,145 @@
+version: 1
+task_id: notion_search_002
+workflow_id: notion_search
+instruction: 'A teammate asked in Slack channel roi-sandbox-questions (thread_ts {{ refs.question_thread
+  }}): "I''m starting next week, what onboarding docs should I read?". Query the Notion database knowledge_base
+  using a filter on the Tags multi_select property (allowed tags: billing, hiring, legal, onboarding,
+  security), then reply in that thread with an answer under 120 words that names every relevant page by
+  its exact title and no other pages.'
+inputs:
+  kb_database: knowledge_base
+  question: I'm starting next week, what onboarding docs should I read?
+  answer_channel: roi-sandbox-questions
+  question_ts: '{{ refs.question_thread }}'
+  tag_options:
+  - billing
+  - hiring
+  - legal
+  - onboarding
+  - security
+fixtures:
+  slack:
+    threads:
+    - ref: question_thread
+      channel: roi-sandbox-questions
+      messages:
+      - user: Daniel
+        text: I'm starting next week, what onboarding docs should I read?
+  notion:
+    databases:
+    - name: knowledge_base
+      pages:
+      - ref: page_01
+        title: Buddy Program Guide
+        properties:
+          Tags:
+          - onboarding
+          Summary: Every new hire is paired with a buddy for 30 days.
+      - ref: page_02
+        title: Invoice Schedule
+        properties:
+          Tags:
+          - billing
+          Summary: Invoices are issued on the first business day of each month.
+      - ref: page_03
+        title: Tax Exemption Handling
+        properties:
+          Tags:
+          - billing
+          Summary: Exempt customers upload certificates before invoicing.
+      - ref: page_04
+        title: Referral Bonus Policy
+        properties:
+          Tags:
+          - hiring
+          Summary: Referral bonuses pay out after the hire's 90th day.
+      - ref: page_05
+        title: Laptop Encryption Standard
+        properties:
+          Tags:
+          - security
+          Summary: All laptops use full-disk encryption enforced by MDM.
+      - ref: page_06
+        title: Dev Environment Setup
+        properties:
+          Tags:
+          - onboarding
+          Summary: Steps to clone the monorepo and run services locally.
+      - ref: page_07
+        title: Access Review Checklist
+        properties:
+          Tags:
+          - security
+          Summary: Admin access is reviewed quarterly by each team lead.
+      - ref: page_08
+        title: Contract Signature Authority
+        properties:
+          Tags:
+          - legal
+          Summary: Only directors may sign contracts above 50,000 USD.
+      - ref: page_09
+        title: Interview Scorecard Rubric
+        properties:
+          Tags:
+          - hiring
+          Summary: Candidates are scored 1 to 4 on four competencies.
+      - ref: page_10
+        title: Incident Disclosure Process
+        properties:
+          Tags:
+          - security
+          Summary: Customer-facing incidents are disclosed within 72 hours.
+expected:
+  validators:
+  - name: slack_message_posted
+    args:
+      channel: roi-sandbox-questions
+      thread_ts: '{{ refs.question_thread }}'
+  - name: message_mentions_terms
+    args:
+      channel: roi-sandbox-questions
+      thread_ts: '{{ refs.question_thread }}'
+      terms: &id001
+      - Buddy Program Guide
+      - Dev Environment Setup
+  - name: message_excludes_terms
+    args:
+      channel: roi-sandbox-questions
+      thread_ts: '{{ refs.question_thread }}'
+      terms: &id002
+      - Interview Scorecard Rubric
+      - Contract Signature Authority
+      - Referral Bonus Policy
+      - Tax Exemption Handling
+      - Laptop Encryption Standard
+      - Incident Disclosure Process
+      - Access Review Checklist
+      - Invoice Schedule
+  step_checks:
+    extract_filter:
+    - check: json_field_equals
+      args:
+        field: tag
+        value: onboarding
+    compose_answer:
+    - check: text_mentions_terms
+      args:
+        terms: *id001
+    - check: text_excludes_terms
+      args:
+        terms: *id002
+  gold_outputs:
+    extract_filter:
+      tag: onboarding
+    query_kb:
+      pages:
+      - title: Buddy Program Guide
+        properties:
+          Tags:
+          - onboarding
+          Summary: Every new hire is paired with a buddy for 30 days.
+      - title: Dev Environment Setup
+        properties:
+          Tags:
+          - onboarding
+          Summary: Steps to clone the monorepo and run services locally.

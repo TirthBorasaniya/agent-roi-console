@@ -1,0 +1,150 @@
+version: 1
+task_id: notion_search_012
+workflow_id: notion_search
+instruction: 'A teammate asked in Slack channel roi-sandbox-questions (thread_ts {{ refs.question_thread
+  }}): "Where do we document legal requirements?". Query the Notion database knowledge_base using a filter
+  on the Tags multi_select property (allowed tags: billing, hiring, infrastructure, legal, security),
+  then reply in that thread with an answer under 120 words that names every relevant page by its exact
+  title and no other pages.'
+inputs:
+  kb_database: knowledge_base
+  question: Where do we document legal requirements?
+  answer_channel: roi-sandbox-questions
+  question_ts: '{{ refs.question_thread }}'
+  tag_options:
+  - billing
+  - hiring
+  - infrastructure
+  - legal
+  - security
+fixtures:
+  slack:
+    threads:
+    - ref: question_thread
+      channel: roi-sandbox-questions
+      messages:
+      - user: Ravi
+        text: Where do we document legal requirements?
+  notion:
+    databases:
+    - name: knowledge_base
+      pages:
+      - ref: page_01
+        title: Open Source License Policy
+        properties:
+          Tags:
+          - legal
+          Summary: Copyleft licenses need legal review before use.
+      - ref: page_02
+        title: Tax Exemption Handling
+        properties:
+          Tags:
+          - billing
+          Summary: Exempt customers upload certificates before invoicing.
+      - ref: page_03
+        title: Interview Scorecard Rubric
+        properties:
+          Tags:
+          - hiring
+          Summary: Candidates are scored 1 to 4 on four competencies.
+      - ref: page_04
+        title: Contract Signature Authority
+        properties:
+          Tags:
+          - legal
+          Summary: Only directors may sign contracts above 50,000 USD.
+      - ref: page_05
+        title: Data Processing Agreement
+        properties:
+          Tags:
+          - legal
+          Summary: The standard DPA covers GDPR and CCPA obligations.
+      - ref: page_06
+        title: Refund Approval Rules
+        properties:
+          Tags:
+          - billing
+          Summary: Refunds above 500 USD need finance approval.
+      - ref: page_07
+        title: Referral Bonus Policy
+        properties:
+          Tags:
+          - hiring
+          Summary: Referral bonuses pay out after the hire's 90th day.
+      - ref: page_08
+        title: Kubernetes Upgrade Runbook
+        properties:
+          Tags:
+          - infrastructure
+          Summary: Clusters upgrade one minor version per quarter.
+      - ref: page_09
+        title: Region Failover Plan
+        properties:
+          Tags:
+          - infrastructure
+          Summary: Traffic fails over to the secondary region within 15 minutes.
+      - ref: page_10
+        title: Password Rotation Policy
+        properties:
+          Tags:
+          - security
+          Summary: Service passwords rotate every 90 days through Vault.
+expected:
+  validators:
+  - name: slack_message_posted
+    args:
+      channel: roi-sandbox-questions
+      thread_ts: '{{ refs.question_thread }}'
+  - name: message_mentions_terms
+    args:
+      channel: roi-sandbox-questions
+      thread_ts: '{{ refs.question_thread }}'
+      terms: &id001
+      - Contract Signature Authority
+      - Open Source License Policy
+      - Data Processing Agreement
+  - name: message_excludes_terms
+    args:
+      channel: roi-sandbox-questions
+      thread_ts: '{{ refs.question_thread }}'
+      terms: &id002
+      - Interview Scorecard Rubric
+      - Tax Exemption Handling
+      - Password Rotation Policy
+      - Referral Bonus Policy
+      - Kubernetes Upgrade Runbook
+      - Refund Approval Rules
+      - Region Failover Plan
+  step_checks:
+    extract_filter:
+    - check: json_field_equals
+      args:
+        field: tag
+        value: legal
+    compose_answer:
+    - check: text_mentions_terms
+      args:
+        terms: *id001
+    - check: text_excludes_terms
+      args:
+        terms: *id002
+  gold_outputs:
+    extract_filter:
+      tag: legal
+    query_kb:
+      pages:
+      - title: Contract Signature Authority
+        properties:
+          Tags:
+          - legal
+          Summary: Only directors may sign contracts above 50,000 USD.
+      - title: Open Source License Policy
+        properties:
+          Tags:
+          - legal
+          Summary: Copyleft licenses need legal review before use.
+      - title: Data Processing Agreement
+        properties:
+          Tags:
+          - legal
+          Summary: The standard DPA covers GDPR and CCPA obligations.

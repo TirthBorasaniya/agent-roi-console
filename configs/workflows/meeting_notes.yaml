@@ -1,0 +1,61 @@
+version: 1
+workflow_id: meeting_notes
+name: Meeting Notes to Notion
+value_category: DATA_ENTRY
+description: Turn raw meeting notes into a structured Notion page with date, attendees, decisions, and action-item to-dos.
+human_baseline:
+  minutes_per_task: 20          # assumption carried over from the original seed data, not timed
+  source: "Assumption from the original seed data; timing protocol in docs/baselines.md, not yet timed"
+  o_timed: false
+labor_rate_usd_per_hour: 55
+review_minutes_per_task: 3
+review_source: "Assumption, not timed"
+fix_minutes_per_failure: 23
+fix_source: "Assumption: baseline plus 3 minutes, not timed"
+default_path: pipeline
+steps:
+  - step_id: extract_meeting
+    type: llm
+    step_class: extraction
+    output: json
+    max_tokens: 600
+    system_prompt: >-
+      You extract structured records from meeting notes. Respond with a JSON object only.
+    user_prompt: |-
+      Extract these fields from the meeting notes below and respond with JSON:
+      {"title": string, "date": "YYYY-MM-DD", "attendees": [first names],
+       "decisions": [strings], "action_items": [{"owner": first name, "task": string, "due": string}]}
+      Use the meeting title exactly as written on the first line of the notes.
+
+      Notes:
+      {{ inputs.notes }}
+  - step_id: create_page
+    type: tool
+    tool: notion.create_page
+    args:
+      parent_id: "{{ inputs.meetings_database }}"
+      title: "{{ steps.extract_meeting.output.title }}"
+      properties: "{{ {'Date': steps.extract_meeting.output.date, 'Attendees': steps.extract_meeting.output.attendees} }}"
+  - step_id: build_blocks
+    type: transform
+    transform: meeting_blocks
+    args:
+      decisions: "{{ steps.extract_meeting.output.decisions }}"
+      action_items: "{{ steps.extract_meeting.output.action_items }}"
+  - step_id: append_items
+    type: tool
+    tool: notion.append_blocks
+    args:
+      page_id: "{{ steps.create_page.output.page_id }}"
+      blocks: "{{ steps.build_blocks.output }}"
+agent:
+  executor_step_class: extraction
+  max_iterations: 8
+  instruction_template: >-
+    Create a page in the Notion database {{ inputs.meetings_database }} for the meeting notes below.
+    Use the meeting title from the first line as the page title, set the Date property (YYYY-MM-DD)
+    and the Attendees property (list of first names), then append blocks to the page: one paragraph
+    block per decision and one to_do block per action item in the form "<Owner>: <task> (due <due>)".
+    Notes:
+    {{ inputs.notes }}
+validators: [notion_page_created, notion_property_equals, notion_todos_mention]

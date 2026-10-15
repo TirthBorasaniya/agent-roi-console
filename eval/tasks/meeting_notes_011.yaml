@@ -1,0 +1,103 @@
+version: 1
+task_id: meeting_notes_011
+workflow_id: meeting_notes
+instruction: 'Create a page in the Notion database meeting_notes for the meeting notes below. Use the
+  meeting title from the first line as the page title, set the Date property (YYYY-MM-DD) and the Attendees
+  property (list of first names), then append blocks to the page: one paragraph block per decision and
+  one to_do block per action item in the form "<Owner>: <task> (due <due>)". Notes: Data Platform Roadmap
+
+  Held on February 16, 2026
+
+  Attendees: Ravi, Maya, Jonah, Hana
+
+
+  Discussion
+
+  Ravi opened with a status update. The group reviewed open risks and agreed:
+
+  - Retire the legacy export endpoint
+
+  - Keep the current pricing for enterprise
+
+
+  Next steps
+
+  - Ravi to update the roadmap slide by Sep 28
+
+  - Hana to send the recap to stakeholders by Feb 16
+
+  '
+inputs:
+  meetings_database: meeting_notes
+  notes: 'Data Platform Roadmap
+
+    Held on February 16, 2026
+
+    Attendees: Ravi, Maya, Jonah, Hana
+
+
+    Discussion
+
+    Ravi opened with a status update. The group reviewed open risks and agreed:
+
+    - Retire the legacy export endpoint
+
+    - Keep the current pricing for enterprise
+
+
+    Next steps
+
+    - Ravi to update the roadmap slide by Sep 28
+
+    - Hana to send the recap to stakeholders by Feb 16
+
+    '
+fixtures:
+  notion:
+    databases:
+    - name: meeting_notes
+      pages: []
+expected:
+  validators:
+  - name: notion_page_created
+    args:
+      database: meeting_notes
+      title_contains: Data Platform Roadmap
+  - name: notion_property_equals
+    args:
+      database: meeting_notes
+      title_contains: Data Platform Roadmap
+      property: Date
+      value: '2026-02-16'
+  - name: notion_todos_mention
+    args:
+      database: meeting_notes
+      title_contains: Data Platform Roadmap
+      terms: &id001
+      - Ravi
+      - Hana
+      min_todos: 2
+  step_checks:
+    extract_meeting:
+    - check: json_field_contains
+      args:
+        field: title
+        value: Data Platform Roadmap
+    - check: json_field_equals
+      args:
+        field: date
+        value: '2026-02-16'
+    - check: json_list_equals
+      args:
+        field: attendees
+        value:
+        - Ravi
+        - Maya
+        - Jonah
+        - Hana
+    - check: json_list_field_equals
+      args:
+        field: action_items
+        key: owner
+        value: *id001
+  gold_outputs: {}

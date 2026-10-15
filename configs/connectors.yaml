@@ -1,0 +1,36 @@
+version: 1
+# Connector configuration shared by the MCP servers, the reset scripts, and the
+# validators. Logical names are resolved to real Slack channel ids, Notion
+# database ids, and Twenty record ids at reset time; nothing outside these
+# allowlists can be read or written.
+slack:
+  channel_allowlist:
+    - roi-sandbox-eng
+    - roi-sandbox-digest
+    - roi-sandbox-questions
+    - roi-sandbox-pipeline
+    - roi-sandbox-alerts
+  alerts_channel: roi-sandbox-alerts
+  # Slack Tier 3 write limits are about 50 per minute; one write per 1.2 s stays inside them
+  write_min_interval_s: 1.2
+notion:
+  # databases are created by scripts/seed_notion.py under NOTION_PARENT_PAGE_ID
+  databases:
+    knowledge_base:
+      title_property: Name
+      properties:
+        Tags: multi_select
+        Summary: rich_text
+    meeting_notes:
+      title_property: Name
+      properties:
+        Date: date
+        Attendees: multi_select
+  # Notion allows an average of 3 requests per second per integration
+  write_min_interval_s: 0.4
+crm:
+  # twenty: self-hosted Twenty GraphQL (default); simulated: SQLite sandbox for CI and demo mode
+  backend: twenty
+  open_stages: [NEW, SCREENING, MEETING, PROPOSAL]
+  # tag written on every seeded record so reset_twenty.py only deletes sandbox data
+  sandbox_marker: roi-sandbox

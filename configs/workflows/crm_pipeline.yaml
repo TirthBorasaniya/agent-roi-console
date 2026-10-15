@@ -1,0 +1,70 @@
+version: 1
+workflow_id: crm_pipeline
+name: CRM Pipeline Summary
+value_category: COORDINATION
+description: List open CRM opportunities, post a pipeline summary to Slack, and log a follow-up activity on the largest deal's point of contact.
+human_baseline:
+  minutes_per_task: 12          # assumption carried over from the original seed data, not timed
+  source: "Assumption from the original seed data; timing protocol in docs/baselines.md, not yet timed"
+  o_timed: false
+labor_rate_usd_per_hour: 55
+review_minutes_per_task: 2
+review_source: "Assumption, not timed"
+fix_minutes_per_failure: 15
+fix_source: "Assumption: baseline plus 3 minutes, not timed"
+default_path: pipeline
+steps:
+  - step_id: fetch_opportunities
+    type: tool
+    tool: crm.list_opportunities
+    args:
+      stage: "{{ inputs.stage }}"
+  - step_id: write_summary
+    type: llm
+    step_class: summarization
+    max_tokens: 400
+    system_prompt: >-
+      You write short sales pipeline summaries for Slack. Output only the summary text.
+    user_prompt: |-
+      Write a pipeline summary for the team{% if inputs.stage %} covering opportunities in stage {{ inputs.stage }}{% endif %}.
+      Name every opportunity below by its exact name with its amount and stage, and state the
+      total amount across all of them in USD as a plain number with a dollar sign.
+
+      Opportunities:
+      {% for o in steps.fetch_opportunities.output.opportunities %}- {{ o.name }} | {{ o.company }} | stage {{ o.stage }} | ${{ o.amount }}
+      {% endfor %}
+  - step_id: pick_followup
+    type: llm
+    step_class: classification
+    output: json
+    max_tokens: 80
+    system_prompt: >-
+      You select records from a list. Respond with a JSON object only.
+    user_prompt: |-
+      Which opportunity below has the largest amount? Respond with JSON of the form
+      {"opportunity_id": "<id>", "contact_id": "<point of contact id>"}.
+
+      {% for o in steps.fetch_opportunities.output.opportunities %}- id {{ o.id }} | {{ o.name }} | ${{ o.amount }} | point of contact {{ o.point_of_contact.name }} (contact_id {{ o.point_of_contact.id }})
+      {% endfor %}
+  - step_id: post_summary
+    type: tool
+    tool: slack.post_message
+    args:
+      channel: "{{ inputs.summary_channel }}"
+      text: "{{ steps.write_summary.output }}"
+  - step_id: log_followup
+    type: tool
+    tool: crm.log_activity
+    args:
+      contact_id: "{{ steps.pick_followup.output.contact_id }}"
+      note: "Pipeline review posted to Slack; follow up on the largest open deal."
+agent:
+  executor_step_class: summarization
+  max_iterations: 10
+  instruction_template: >-
+    List the open CRM opportunities{% if inputs.stage %} in stage {{ inputs.stage }}{% endif %}. Post a pipeline
+    summary to Slack channel {{ inputs.summary_channel }} that names every one of those opportunities by
+    its exact name with its amount and stage and states their total amount in USD. Then log a CRM
+    activity on the point of contact of the opportunity with the largest amount, with a note that
+    contains the word "pipeline".
+validators: [slack_message_posted, message_mentions_terms, message_mentions_amount, crm_activity_logged]

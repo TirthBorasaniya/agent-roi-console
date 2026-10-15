@@ -1,0 +1,67 @@
+version: 1
+workflow_id: notion_search
+name: Notion Knowledge Search
+value_category: RESEARCH
+description: Answer a question posted in Slack by searching the Notion knowledge base and replying in the thread with cited pages.
+human_baseline:
+  minutes_per_task: 10          # assumption carried over from the original seed data, not timed
+  source: "Assumption from the original seed data; timing protocol in docs/baselines.md, not yet timed"
+  o_timed: false
+labor_rate_usd_per_hour: 55
+review_minutes_per_task: 2
+review_source: "Assumption, not timed"
+fix_minutes_per_failure: 13
+fix_source: "Assumption: baseline plus 3 minutes, not timed"
+default_path: pipeline
+steps:
+  - step_id: extract_filter
+    type: llm
+    step_class: extraction
+    output: json
+    max_tokens: 60
+    system_prompt: >-
+      You map questions to knowledge-base tags. Respond with a JSON object only.
+    user_prompt: |-
+      Choose the single tag from this list that best matches the question.
+      Tags: {{ inputs.tag_options | join(", ") }}
+      Question: {{ inputs.question }}
+      Respond with JSON of the form {"tag": "<one tag from the list>"}.
+  - step_id: query_kb
+    type: tool
+    tool: notion.query_database
+    args:
+      database_id: "{{ inputs.kb_database }}"
+      filter: "{{ {'property': 'Tags', 'multi_select': {'contains': steps.extract_filter.output.tag}} }}"
+  - step_id: compose_answer
+    type: llm
+    step_class: generation_short
+    max_tokens: 300
+    system_prompt: >-
+      You answer questions using only the knowledge-base pages provided.
+      Output only the answer text.
+    user_prompt: |-
+      Question: {{ inputs.question }}
+
+      Answer in under 120 words using only these pages. Name every page you rely on by its
+      exact title, and do not mention any page that is not listed here.
+
+      Pages:
+      {% for p in steps.query_kb.output.pages %}- {{ p.title }}: {{ p.properties.Summary }}
+      {% endfor %}
+  - step_id: post_answer
+    type: tool
+    tool: slack.post_message
+    args:
+      channel: "{{ inputs.answer_channel }}"
+      text: "{{ steps.compose_answer.output }}"
+      thread_ts: "{{ inputs.question_ts }}"
+agent:
+  executor_step_class: generation_short
+  max_iterations: 8
+  instruction_template: >-
+    A teammate asked in Slack channel {{ inputs.answer_channel }} (thread_ts {{ inputs.question_ts }}):
+    "{{ inputs.question }}". Query the Notion database {{ inputs.kb_database }} using a filter on the
+    Tags multi_select property (allowed tags: {{ inputs.tag_options | join(", ") }}), then reply in that
+    thread with an answer under 120 words that names every relevant page by its exact title and no
+    other pages.
+validators: [slack_message_posted, message_mentions_terms, message_excludes_terms]

@@ -1,0 +1,32 @@
+version: 1
+# Routing-relevant properties of every step class. `cacheable` gates the semantic
+# cache: only step classes whose outputs carry no personal content may be served
+# from a similar-but-not-identical prompt (SPEC 5.5, 12).
+step_classes:
+  summarization:
+    description: Condense a Slack thread or a CRM pipeline into a short message.
+    cacheable: false
+    min_step_success: 0.9
+  extraction:
+    description: Extract structured JSON fields from text (meeting notes, search filters).
+    cacheable: true
+    min_step_success: 0.9
+    o_json: true
+  classification:
+    description: Choose one item from a provided list, returned as JSON.
+    cacheable: true
+    min_step_success: 0.9
+    o_json: true
+  generation_short:
+    description: Write a short answer that cites provided sources.
+    cacheable: false
+    min_step_success: 0.9
+  planning:
+    description: Produce a JSON plan of tool calls and generation steps for the planner-executor path.
+    cacheable: false
+    min_step_success: 0.9
+    o_json: true
+  agent_tool_use:
+    description: One turn of the ReAct agent, choosing tool calls or finishing.
+    cacheable: false
+    min_step_success: 0.9

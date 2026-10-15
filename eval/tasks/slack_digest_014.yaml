@@ -1,0 +1,61 @@
+version: 1
+task_id: slack_digest_014
+workflow_id: slack_digest
+instruction: Read the Slack thread with thread_ts {{ refs.thread_main }} in channel roi-sandbox-eng (a
+  discussion about the search relevance project). Write a digest under 150 words that lists every decision
+  and every action item with its owner's name and due date exactly as written, then post the digest as
+  a new message in channel roi-sandbox-digest.
+inputs:
+  source_channel: roi-sandbox-eng
+  thread_ts: '{{ refs.thread_main }}'
+  digest_channel: roi-sandbox-digest
+  topic: the search relevance project
+fixtures:
+  slack:
+    threads:
+    - ref: thread_main
+      channel: roi-sandbox-eng
+      messages:
+      - user: Nadia
+        text: Kicking off a thread on the search relevance project. We need to settle the ranking model
+          and the evaluation set today.
+      - user: Maya
+        text: For the ranking model I'd lean toward keyword boosts, but I'm open to the hybrid reranker.
+      - user: Samir
+        text: the hybrid reranker is the safer choice given what we saw last quarter.
+      - user: Nadia
+        text: 'Agreed. Decision: we go with the hybrid reranker for the ranking model.'
+      - user: Maya
+        text: 'On the evaluation set: ad hoc queries was floated, but the group prefers a 500-query judged
+          set. Decision: a 500-query judged set.'
+      - user: Nadia
+        text: 'Action items: Maya will label the judged queries by Jan 19.'
+      - user: Samir
+        text: I'll ship the reranker behind a flag by Sep 16.
+      - user: Nadia
+        text: And Lena is on point to write the results memo by Oct 18.
+      - user: Lena
+        text: Works for me, thanks all.
+expected:
+  validators:
+  - name: slack_message_posted
+    args:
+      channel: roi-sandbox-digest
+  - name: message_mentions_terms
+    args:
+      channel: roi-sandbox-digest
+      terms: &id001
+      - hybrid reranker
+      - 500-query judged set
+      - Maya
+      - Samir
+      - Lena
+      - Jan 19
+      - Sep 16
+      - Oct 18
+  step_checks:
+    write_digest:
+    - check: text_mentions_terms
+      args:
+        terms: *id001
+  gold_outputs: {}

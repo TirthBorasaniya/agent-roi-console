@@ -1,0 +1,152 @@
+version: 1
+task_id: crm_pipeline_013
+workflow_id: crm_pipeline
+instruction: List the open CRM opportunities. Post a pipeline summary to Slack channel roi-sandbox-pipeline
+  that names every one of those opportunities by its exact name with its amount and stage and states their
+  total amount in USD. Then log a CRM activity on the point of contact of the opportunity with the largest
+  amount, with a note that contains the word "pipeline".
+inputs:
+  stage: null
+  summary_channel: roi-sandbox-pipeline
+fixtures:
+  crm:
+    companies:
+    - ref: co_1
+      name: Tyrell Mobility
+      domain: tyrell.roi-sandbox.test
+    - ref: co_2
+      name: Initech Health
+      domain: initech.roi-sandbox.test
+    - ref: co_3
+      name: Oscorp Materials
+      domain: oscorp.roi-sandbox.test
+    - ref: co_4
+      name: Cyberdyne Energy
+      domain: cyberdyne.roi-sandbox.test
+    - ref: co_5
+      name: Wonka Brands
+      domain: wonka.roi-sandbox.test
+    people:
+    - ref: p_1
+      first_name: Priya
+      last_name: Ortega
+      email: priya.ortega@tyrell.roi-sandbox.test
+      company: co_1
+      job_title: Procurement Lead
+    - ref: p_2
+      first_name: Priya
+      last_name: Aziz
+      email: priya.aziz@initech.roi-sandbox.test
+      company: co_2
+      job_title: CTO
+    - ref: p_3
+      first_name: Daniel
+      last_name: Petrov
+      email: daniel.petrov@oscorp.roi-sandbox.test
+      company: co_3
+      job_title: Procurement Lead
+    - ref: p_4
+      first_name: Omar
+      last_name: Iyer
+      email: omar.iyer@cyberdyne.roi-sandbox.test
+      company: co_4
+      job_title: CTO
+    - ref: p_5
+      first_name: Jonah
+      last_name: Kimura
+      email: jonah.kimura@wonka.roi-sandbox.test
+      company: co_5
+      job_title: CTO
+    opportunities:
+    - ref: opp_1
+      name: Tyrell Annual Renewal 1
+      stage: PROPOSAL
+      amount: 59000
+      currency: USD
+      company: co_1
+      point_of_contact: p_1
+    - ref: opp_2
+      name: Initech Enterprise License 2
+      stage: NEW
+      amount: 60000
+      currency: USD
+      company: co_2
+      point_of_contact: p_2
+    - ref: opp_3
+      name: Oscorp Support Upgrade 3
+      stage: SCREENING
+      amount: 74500
+      currency: USD
+      company: co_3
+      point_of_contact: p_3
+    - ref: opp_4
+      name: Cyberdyne Seat Expansion 4
+      stage: CUSTOMER
+      amount: 114000
+      currency: USD
+      company: co_4
+      point_of_contact: p_4
+    - ref: opp_5
+      name: Wonka Platform Expansion 5
+      stage: SCREENING
+      amount: 116500
+      currency: USD
+      company: co_5
+      point_of_contact: p_5
+    - ref: opp_6
+      name: Tyrell Analytics Add-on 6
+      stage: SCREENING
+      amount: 15000
+      currency: USD
+      company: co_1
+      point_of_contact: p_1
+    - ref: opp_7
+      name: Initech Annual Renewal 7
+      stage: NEW
+      amount: 59000
+      currency: USD
+      company: co_2
+      point_of_contact: p_2
+expected:
+  validators:
+  - name: slack_message_posted
+    args:
+      channel: roi-sandbox-pipeline
+  - name: message_mentions_terms
+    args:
+      channel: roi-sandbox-pipeline
+      terms:
+      - Tyrell Annual Renewal 1
+      - Initech Enterprise License 2
+      - Oscorp Support Upgrade 3
+      - Wonka Platform Expansion 5
+      - Tyrell Analytics Add-on 6
+      - Initech Annual Renewal 7
+  - name: message_mentions_amount
+    args:
+      channel: roi-sandbox-pipeline
+      amount: 384000
+  - name: crm_activity_logged
+    args:
+      contact: '{{ refs.p_5 }}'
+      contains: pipeline
+  step_checks:
+    write_summary:
+    - check: text_mentions_terms
+      args:
+        terms:
+        - Tyrell Annual Renewal 1
+        - Initech Enterprise License 2
+        - Oscorp Support Upgrade 3
+        - Wonka Platform Expansion 5
+        - Tyrell Analytics Add-on 6
+        - Initech Annual Renewal 7
+    - check: text_mentions_amount
+      args:
+        amount: 384000
+    pick_followup:
+    - check: json_field_equals
+      args:
+        field: contact_id
+        value: '{{ refs.p_5 }}'
+  gold_outputs: {}

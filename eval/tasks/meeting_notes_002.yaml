@@ -1,0 +1,104 @@
+version: 1
+task_id: meeting_notes_002
+workflow_id: meeting_notes
+instruction: 'Create a page in the Notion database meeting_notes for the meeting notes below. Use the
+  meeting title from the first line as the page title, set the Date property (YYYY-MM-DD) and the Attendees
+  property (list of first names), then append blocks to the page: one paragraph block per decision and
+  one to_do block per action item in the form "<Owner>: <task> (due <due>)". Notes: Mobile Release Review
+
+  Held on February 24, 2026
+
+  Attendees: Chloe, Felix, Maya, Priya, Tomas
+
+
+  Discussion
+
+  Chloe opened with a status update. The group reviewed open risks and agreed:
+
+  - Fund the observability upgrade
+
+  - Move the launch to the second week of the month
+
+
+  Next steps
+
+  - Maya to update the roadmap slide by Jun 24
+
+  - Chloe to draft the customer announcement by Sep 12
+
+  '
+inputs:
+  meetings_database: meeting_notes
+  notes: 'Mobile Release Review
+
+    Held on February 24, 2026
+
+    Attendees: Chloe, Felix, Maya, Priya, Tomas
+
+
+    Discussion
+
+    Chloe opened with a status update. The group reviewed open risks and agreed:
+
+    - Fund the observability upgrade
+
+    - Move the launch to the second week of the month
+
+
+    Next steps
+
+    - Maya to update the roadmap slide by Jun 24
+
+    - Chloe to draft the customer announcement by Sep 12
+
+    '
+fixtures:
+  notion:
+    databases:
+    - name: meeting_notes
+      pages: []
+expected:
+  validators:
+  - name: notion_page_created
+    args:
+      database: meeting_notes
+      title_contains: Mobile Release Review
+  - name: notion_property_equals
+    args:
+      database: meeting_notes
+      title_contains: Mobile Release Review
+      property: Date
+      value: '2026-02-24'
+  - name: notion_todos_mention
+    args:
+      database: meeting_notes
+      title_contains: Mobile Release Review
+      terms: &id001
+      - Maya
+      - Chloe
+      min_todos: 2
+  step_checks:
+    extract_meeting:
+    - check: json_field_contains
+      args:
+        field: title
+        value: Mobile Release Review
+    - check: json_field_equals
+      args:
+        field: date
+        value: '2026-02-24'
+    - check: json_list_equals
+      args:
+        field: attendees
+        value:
+        - Chloe
+        - Felix
+        - Maya
+        - Priya
+        - Tomas
+    - check: json_list_field_equals
+      args:
+        field: action_items
+        key: owner
+        value: *id001
+  gold_outputs: {}

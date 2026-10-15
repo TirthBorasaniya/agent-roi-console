@@ -1,0 +1,104 @@
+version: 1
+task_id: meeting_notes_006
+workflow_id: meeting_notes
+instruction: 'Create a page in the Notion database meeting_notes for the meeting notes below. Use the
+  meeting title from the first line as the page title, set the Date property (YYYY-MM-DD) and the Attendees
+  property (list of first names), then append blocks to the page: one paragraph block per decision and
+  one to_do block per action item in the form "<Owner>: <task> (due <due>)". Notes: Growth Experiments
+  Review
+
+  Held on August 26, 2026
+
+  Attendees: Elena, Ravi, Omar, Aisha
+
+
+  Discussion
+
+  Elena opened with a status update. The group reviewed open risks and agreed:
+
+  - Run the beta with five design partners
+
+  - Require design review for every new screen
+
+
+  Next steps
+
+  - Ravi to send the recap to stakeholders by Jun 25
+
+  - Aisha to draft the customer announcement by Nov 5
+
+  '
+inputs:
+  meetings_database: meeting_notes
+  notes: 'Growth Experiments Review
+
+    Held on August 26, 2026
+
+    Attendees: Elena, Ravi, Omar, Aisha
+
+
+    Discussion
+
+    Elena opened with a status update. The group reviewed open risks and agreed:
+
+    - Run the beta with five design partners
+
+    - Require design review for every new screen
+
+
+    Next steps
+
+    - Ravi to send the recap to stakeholders by Jun 25
+
+    - Aisha to draft the customer announcement by Nov 5
+
+    '
+fixtures:
+  notion:
+    databases:
+    - name: meeting_notes
+      pages: []
+expected:
+  validators:
+  - name: notion_page_created
+    args:
+      database: meeting_notes
+      title_contains: Growth Experiments Review
+  - name: notion_property_equals
+    args:
+      database: meeting_notes
+      title_contains: Growth Experiments Review
+      property: Date
+      value: '2026-08-26'
+  - name: notion_todos_mention
+    args:
+      database: meeting_notes
+      title_contains: Growth Experiments Review
+      terms: &id001
+      - Ravi
+      - Aisha
+      min_todos: 2
+  step_checks:
+    extract_meeting:
+    - check: json_field_contains
+      args:
+        field: title
+        value: Growth Experiments Review
+    - check: json_field_equals
+      args:
+        field: date
+        value: '2026-08-26'
+    - check: json_list_equals
+      args:
+        field: attendees
+        value:
+        - Elena
+        - Ravi
+        - Omar
+        - Aisha
+    - check: json_list_field_equals
+      args:
+        field: action_items
+        key: owner
+        value: *id001
+  gold_outputs: {}

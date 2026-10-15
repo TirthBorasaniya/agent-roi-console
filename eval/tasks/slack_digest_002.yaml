@@ -1,0 +1,61 @@
+version: 1
+task_id: slack_digest_002
+workflow_id: slack_digest
+instruction: Read the Slack thread with thread_ts {{ refs.thread_main }} in channel roi-sandbox-eng (a
+  discussion about the mobile app 4.2 release). Write a digest under 150 words that lists every decision
+  and every action item with its owner's name and due date exactly as written, then post the digest as
+  a new message in channel roi-sandbox-digest.
+inputs:
+  source_channel: roi-sandbox-eng
+  thread_ts: '{{ refs.thread_main }}'
+  digest_channel: roi-sandbox-digest
+  topic: the mobile app 4.2 release
+fixtures:
+  slack:
+    threads:
+    - ref: thread_main
+      channel: roi-sandbox-eng
+      messages:
+      - user: Daniel
+        text: Kicking off a thread on the mobile app 4.2 release. We need to settle the release train
+          and the crash threshold today.
+      - user: Hana
+        text: For the release train I'd lean toward a big-bang launch, but I'm open to a staged rollout.
+      - user: Priya
+        text: a staged rollout is the safer choice given what we saw last quarter.
+      - user: Daniel
+        text: 'Agreed. Decision: we go with a staged rollout for the release train.'
+      - user: Hana
+        text: 'On the crash threshold: 1 percent was floated, but the group prefers the crash-free gate.
+          Decision: the crash-free gate.'
+      - user: Daniel
+        text: 'Action items: Hana will freeze the release branch by May 6.'
+      - user: Priya
+        text: I'll update the store listing by Aug 22.
+      - user: Daniel
+        text: And Sofia is on point to brief support by Apr 3.
+      - user: Sofia
+        text: Works for me, thanks all.
+expected:
+  validators:
+  - name: slack_message_posted
+    args:
+      channel: roi-sandbox-digest
+  - name: message_mentions_terms
+    args:
+      channel: roi-sandbox-digest
+      terms: &id001
+      - staged rollout
+      - crash-free gate
+      - Hana
+      - Priya
+      - Sofia
+      - May 6
+      - Aug 22
+      - Apr 3
+  step_checks:
+    write_digest:
+    - check: text_mentions_terms
+      args:
+        terms: *id001
+  gold_outputs: {}

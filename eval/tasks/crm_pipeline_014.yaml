@@ -1,0 +1,144 @@
+version: 1
+task_id: crm_pipeline_014
+workflow_id: crm_pipeline
+instruction: List the open CRM opportunities in stage NEW. Post a pipeline summary to Slack channel roi-sandbox-pipeline
+  that names every one of those opportunities by its exact name with its amount and stage and states their
+  total amount in USD. Then log a CRM activity on the point of contact of the opportunity with the largest
+  amount, with a note that contains the word "pipeline".
+inputs:
+  stage: NEW
+  summary_channel: roi-sandbox-pipeline
+fixtures:
+  crm:
+    companies:
+    - ref: co_1
+      name: Wonka Brands
+      domain: wonka.roi-sandbox.test
+    - ref: co_2
+      name: Pied Piper Cloud
+      domain: pied.roi-sandbox.test
+    - ref: co_3
+      name: Vandelay Imports
+      domain: vandelay.roi-sandbox.test
+    - ref: co_4
+      name: Gringotts Finance
+      domain: gringotts.roi-sandbox.test
+    - ref: co_5
+      name: Hooli Media
+      domain: hooli.roi-sandbox.test
+    people:
+    - ref: p_1
+      first_name: Hana
+      last_name: Nair
+      email: hana.nair@wonka.roi-sandbox.test
+      company: co_1
+      job_title: VP Operations
+    - ref: p_2
+      first_name: Priya
+      last_name: Petrov
+      email: priya.petrov@pied.roi-sandbox.test
+      company: co_2
+      job_title: CTO
+    - ref: p_3
+      first_name: Sofia
+      last_name: Nair
+      email: sofia.nair@vandelay.roi-sandbox.test
+      company: co_3
+      job_title: Procurement Lead
+    - ref: p_4
+      first_name: Omar
+      last_name: Webb
+      email: omar.webb@gringotts.roi-sandbox.test
+      company: co_4
+      job_title: Head of IT
+    - ref: p_5
+      first_name: Daniel
+      last_name: Haddad
+      email: daniel.haddad@hooli.roi-sandbox.test
+      company: co_5
+      job_title: Head of IT
+    opportunities:
+    - ref: opp_1
+      name: Wonka Pilot Program 1
+      stage: NEW
+      amount: 45500
+      currency: USD
+      company: co_1
+      point_of_contact: p_1
+    - ref: opp_2
+      name: Pied Enterprise License 2
+      stage: NEW
+      amount: 131500
+      currency: USD
+      company: co_2
+      point_of_contact: p_2
+    - ref: opp_3
+      name: Vandelay Enterprise License 3
+      stage: CUSTOMER
+      amount: 16000
+      currency: USD
+      company: co_3
+      point_of_contact: p_3
+    - ref: opp_4
+      name: Gringotts Pilot Program 4
+      stage: PROPOSAL
+      amount: 112500
+      currency: USD
+      company: co_4
+      point_of_contact: p_4
+    - ref: opp_5
+      name: Hooli Multi-region Rollout 5
+      stage: MEETING
+      amount: 23500
+      currency: USD
+      company: co_5
+      point_of_contact: p_5
+    - ref: opp_6
+      name: Wonka Pilot Program 6
+      stage: PROPOSAL
+      amount: 99000
+      currency: USD
+      company: co_1
+      point_of_contact: p_1
+    - ref: opp_7
+      name: Pied Platform Expansion 7
+      stage: PROPOSAL
+      amount: 129000
+      currency: USD
+      company: co_2
+      point_of_contact: p_2
+expected:
+  validators:
+  - name: slack_message_posted
+    args:
+      channel: roi-sandbox-pipeline
+  - name: message_mentions_terms
+    args:
+      channel: roi-sandbox-pipeline
+      terms:
+      - Wonka Pilot Program 1
+      - Pied Enterprise License 2
+  - name: message_mentions_amount
+    args:
+      channel: roi-sandbox-pipeline
+      amount: 177000
+  - name: crm_activity_logged
+    args:
+      contact: '{{ refs.p_2 }}'
+      contains: pipeline
+  step_checks:
+    write_summary:
+    - check: text_mentions_terms
+      args:
+        terms:
+        - Wonka Pilot Program 1
+        - Pied Enterprise License 2
+    - check: text_mentions_amount
+      args:
+        amount: 177000
+    pick_followup:
+    - check: json_field_equals
+      args:
+        field: contact_id
+        value: '{{ refs.p_2 }}'
+  gold_outputs: {}

@@ -1,0 +1,152 @@
+version: 1
+task_id: crm_pipeline_007
+workflow_id: crm_pipeline
+instruction: List the open CRM opportunities. Post a pipeline summary to Slack channel roi-sandbox-pipeline
+  that names every one of those opportunities by its exact name with its amount and stage and states their
+  total amount in USD. Then log a CRM activity on the point of contact of the opportunity with the largest
+  amount, with a note that contains the word "pipeline".
+inputs:
+  stage: null
+  summary_channel: roi-sandbox-pipeline
+fixtures:
+  crm:
+    companies:
+    - ref: co_1
+      name: Tyrell Mobility
+      domain: tyrell.roi-sandbox.test
+    - ref: co_2
+      name: Vandelay Imports
+      domain: vandelay.roi-sandbox.test
+    - ref: co_3
+      name: Acme Robotics
+      domain: acme.roi-sandbox.test
+    - ref: co_4
+      name: Wonka Brands
+      domain: wonka.roi-sandbox.test
+    - ref: co_5
+      name: Pied Piper Cloud
+      domain: pied.roi-sandbox.test
+    people:
+    - ref: p_1
+      first_name: Marcus
+      last_name: Petrov
+      email: marcus.petrov@tyrell.roi-sandbox.test
+      company: co_1
+      job_title: Head of IT
+    - ref: p_2
+      first_name: Nadia
+      last_name: Iyer
+      email: nadia.iyer@vandelay.roi-sandbox.test
+      company: co_2
+      job_title: CTO
+    - ref: p_3
+      first_name: Sofia
+      last_name: Kimura
+      email: sofia.kimura@acme.roi-sandbox.test
+      company: co_3
+      job_title: Procurement Lead
+    - ref: p_4
+      first_name: Chloe
+      last_name: Larsen
+      email: chloe.larsen@wonka.roi-sandbox.test
+      company: co_4
+      job_title: VP Operations
+    - ref: p_5
+      first_name: Omar
+      last_name: Webb
+      email: omar.webb@pied.roi-sandbox.test
+      company: co_5
+      job_title: VP Operations
+    opportunities:
+    - ref: opp_1
+      name: Tyrell Pilot Program 1
+      stage: PROPOSAL
+      amount: 61000
+      currency: USD
+      company: co_1
+      point_of_contact: p_1
+    - ref: opp_2
+      name: Vandelay Analytics Add-on 2
+      stage: NEW
+      amount: 69000
+      currency: USD
+      company: co_2
+      point_of_contact: p_2
+    - ref: opp_3
+      name: Acme Support Upgrade 3
+      stage: SCREENING
+      amount: 30500
+      currency: USD
+      company: co_3
+      point_of_contact: p_3
+    - ref: opp_4
+      name: Wonka Annual Renewal 4
+      stage: SCREENING
+      amount: 43500
+      currency: USD
+      company: co_4
+      point_of_contact: p_4
+    - ref: opp_5
+      name: Pied Support Upgrade 5
+      stage: SCREENING
+      amount: 149500
+      currency: USD
+      company: co_5
+      point_of_contact: p_5
+    - ref: opp_6
+      name: Tyrell Annual Renewal 6
+      stage: CUSTOMER
+      amount: 32500
+      currency: USD
+      company: co_1
+      point_of_contact: p_1
+    - ref: opp_7
+      name: Vandelay Enterprise License 7
+      stage: SCREENING
+      amount: 97000
+      currency: USD
+      company: co_2
+      point_of_contact: p_2
+expected:
+  validators:
+  - name: slack_message_posted
+    args:
+      channel: roi-sandbox-pipeline
+  - name: message_mentions_terms
+    args:
+      channel: roi-sandbox-pipeline
+      terms:
+      - Tyrell Pilot Program 1
+      - Vandelay Analytics Add-on 2
+      - Acme Support Upgrade 3
+      - Wonka Annual Renewal 4
+      - Pied Support Upgrade 5
+      - Vandelay Enterprise License 7
+  - name: message_mentions_amount
+    args:
+      channel: roi-sandbox-pipeline
+      amount: 450500
+  - name: crm_activity_logged
+    args:
+      contact: '{{ refs.p_5 }}'
+      contains: pipeline
+  step_checks:
+    write_summary:
+    - check: text_mentions_terms
+      args:
+        terms:
+        - Tyrell Pilot Program 1
+        - Vandelay Analytics Add-on 2
+        - Acme Support Upgrade 3
+        - Wonka Annual Renewal 4
+        - Pied Support Upgrade 5
+        - Vandelay Enterprise License 7
+    - check: text_mentions_amount
+      args:
+        amount: 450500
+    pick_followup:
+    - check: json_field_equals
+      args:
+        field: contact_id
+        value: '{{ refs.p_5 }}'
+  gold_outputs: {}

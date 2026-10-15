@@ -1,0 +1,108 @@
+version: 1
+task_id: meeting_notes_005
+workflow_id: meeting_notes
+instruction: 'Create a page in the Notion database meeting_notes for the meeting notes below. Use the
+  meeting title from the first line as the page title, set the Date property (YYYY-MM-DD) and the Attendees
+  property (list of first names), then append blocks to the page: one paragraph block per decision and
+  one to_do block per action item in the form "<Owner>: <task> (due <due>)". Notes: Design Critique
+
+  Held on March 9, 2026
+
+  Attendees: Nadia, Hana, Chloe, Daniel
+
+
+  Discussion
+
+  Nadia opened with a status update. The group reviewed open risks and agreed:
+
+  - Pause the referral experiment
+
+  - Retire the legacy export endpoint
+
+
+  Next steps
+
+  - Nadia to prepare the budget estimate by Dec 8
+
+  - Chloe to schedule the follow-up session by Dec 15
+
+  - Daniel to file the vendor security review by Dec 20
+
+  '
+inputs:
+  meetings_database: meeting_notes
+  notes: 'Design Critique
+
+    Held on March 9, 2026
+
+    Attendees: Nadia, Hana, Chloe, Daniel
+
+
+    Discussion
+
+    Nadia opened with a status update. The group reviewed open risks and agreed:
+
+    - Pause the referral experiment
+
+    - Retire the legacy export endpoint
+
+
+    Next steps
+
+    - Nadia to prepare the budget estimate by Dec 8
+
+    - Chloe to schedule the follow-up session by Dec 15
+
+    - Daniel to file the vendor security review by Dec 20
+
+    '
+fixtures:
+  notion:
+    databases:
+    - name: meeting_notes
+      pages: []
+expected:
+  validators:
+  - name: notion_page_created
+    args:
+      database: meeting_notes
+      title_contains: Design Critique
+  - name: notion_property_equals
+    args:
+      database: meeting_notes
+      title_contains: Design Critique
+      property: Date
+      value: '2026-03-09'
+  - name: notion_todos_mention
+    args:
+      database: meeting_notes
+      title_contains: Design Critique
+      terms: &id001
+      - Nadia
+      - Chloe
+      - Daniel
+      min_todos: 3
+  step_checks:
+    extract_meeting:
+    - check: json_field_contains
+      args:
+        field: title
+        value: Design Critique
+    - check: json_field_equals
+      args:
+        field: date
+        value: '2026-03-09'
+    - check: json_list_equals
+      args:
+        field: attendees
+        value:
+        - Nadia
+        - Hana
+        - Chloe
+        - Daniel
+    - check: json_list_field_equals
+      args:
+        field: action_items
+        key: owner
+        value: *id001
+  gold_outputs: {}

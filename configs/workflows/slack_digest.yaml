@@ -1,0 +1,52 @@
+version: 1
+workflow_id: slack_digest
+name: Slack Channel Digest
+value_category: SUMMARIZATION
+description: Read a Slack discussion thread and post a digest of its decisions and action items to the digest channel.
+human_baseline:
+  minutes_per_task: 15          # assumption carried over from the original seed data, not timed
+  source: "Assumption from the original seed data; timing protocol in docs/baselines.md, not yet timed"
+  o_timed: false
+labor_rate_usd_per_hour: 55     # assumption, configurable, used only in ROI
+review_minutes_per_task: 2      # assumption: read the digest against the thread
+review_source: "Assumption, not timed"
+fix_minutes_per_failure: 18     # assumption: redo the digest by hand plus 3 minutes of cleanup
+fix_source: "Assumption: baseline plus 3 minutes, not timed"
+default_path: pipeline
+steps:
+  - step_id: read_thread
+    type: tool
+    tool: slack.read_thread
+    args:
+      channel: "{{ inputs.source_channel }}"
+      thread_ts: "{{ inputs.thread_ts }}"
+  - step_id: write_digest
+    type: llm
+    step_class: summarization
+    max_tokens: 400
+    system_prompt: >-
+      You write concise Slack digests for teammates who missed a discussion.
+      Output only the digest text, with no preamble.
+    user_prompt: |-
+      Summarize this Slack thread from #{{ inputs.source_channel }} about {{ inputs.topic }}.
+      List every decision and every action item. For each action item give the owner's name
+      and the due date exactly as written in the thread. Keep the digest under 150 words.
+
+      Thread:
+      {% for m in steps.read_thread.output.messages %}- {{ m.user }}: {{ m.text }}
+      {% endfor %}
+  - step_id: post_digest
+    type: tool
+    tool: slack.post_message
+    args:
+      channel: "{{ inputs.digest_channel }}"
+      text: "{{ steps.write_digest.output }}"
+agent:
+  executor_step_class: summarization
+  max_iterations: 8
+  instruction_template: >-
+    Read the Slack thread with thread_ts {{ inputs.thread_ts }} in channel {{ inputs.source_channel }}
+    (a discussion about {{ inputs.topic }}). Write a digest under 150 words that lists every decision
+    and every action item with its owner's name and due date exactly as written, then post the digest
+    as a new message in channel {{ inputs.digest_channel }}.
+validators: [slack_message_posted, message_mentions_terms]

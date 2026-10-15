@@ -1,0 +1,61 @@
+version: 1
+task_id: slack_digest_013
+workflow_id: slack_digest
+instruction: Read the Slack thread with thread_ts {{ refs.thread_main }} in channel roi-sandbox-eng (a
+  discussion about the offsite planning). Write a digest under 150 words that lists every decision and
+  every action item with its owner's name and due date exactly as written, then post the digest as a new
+  message in channel roi-sandbox-digest.
+inputs:
+  source_channel: roi-sandbox-eng
+  thread_ts: '{{ refs.thread_main }}'
+  digest_channel: roi-sandbox-digest
+  topic: the offsite planning
+fixtures:
+  slack:
+    threads:
+    - ref: thread_main
+      channel: roi-sandbox-eng
+      messages:
+      - user: Kenji
+        text: Kicking off a thread on the offsite planning. We need to settle the location and the agenda
+          format today.
+      - user: Nadia
+        text: For the location I'd lean toward a city hotel, but I'm open to the Lisbon venue.
+      - user: Diego
+        text: the Lisbon venue is the safer choice given what we saw last quarter.
+      - user: Kenji
+        text: 'Agreed. Decision: we go with the Lisbon venue for the location.'
+      - user: Nadia
+        text: 'On the agenda format: all talks was floated, but the group prefers half-day workshops.
+          Decision: half-day workshops.'
+      - user: Kenji
+        text: 'Action items: Nadia will book the flights by Oct 24.'
+      - user: Diego
+        text: I'll send the agenda survey by Apr 16.
+      - user: Kenji
+        text: And Aisha is on point to confirm the catering by Oct 11.
+      - user: Aisha
+        text: Works for me, thanks all.
+expected:
+  validators:
+  - name: slack_message_posted
+    args:
+      channel: roi-sandbox-digest
+  - name: message_mentions_terms
+    args:
+      channel: roi-sandbox-digest
+      terms: &id001
+      - Lisbon venue
+      - half-day workshops
+      - Nadia
+      - Diego
+      - Aisha
+      - Oct 24
+      - Apr 16
+      - Oct 11
+  step_checks:
+    write_digest:
+    - check: text_mentions_terms
+      args:
+        terms: *id001
+  gold_outputs: {}

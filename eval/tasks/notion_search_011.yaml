@@ -1,0 +1,151 @@
+version: 1
+task_id: notion_search_011
+workflow_id: notion_search
+instruction: 'A teammate asked in Slack channel roi-sandbox-questions (thread_ts {{ refs.question_thread
+  }}): "Which pages explain how we run hiring?". Query the Notion database knowledge_base using a filter
+  on the Tags multi_select property (allowed tags: billing, hiring, infrastructure, legal, onboarding,
+  security), then reply in that thread with an answer under 120 words that names every relevant page by
+  its exact title and no other pages.'
+inputs:
+  kb_database: knowledge_base
+  question: Which pages explain how we run hiring?
+  answer_channel: roi-sandbox-questions
+  question_ts: '{{ refs.question_thread }}'
+  tag_options:
+  - billing
+  - hiring
+  - infrastructure
+  - legal
+  - onboarding
+  - security
+fixtures:
+  slack:
+    threads:
+    - ref: question_thread
+      channel: roi-sandbox-questions
+      messages:
+      - user: Ravi
+        text: Which pages explain how we run hiring?
+  notion:
+    databases:
+    - name: knowledge_base
+      pages:
+      - ref: page_01
+        title: Interview Scorecard Rubric
+        properties:
+          Tags:
+          - hiring
+          Summary: Candidates are scored 1 to 4 on four competencies.
+      - ref: page_02
+        title: Referral Bonus Policy
+        properties:
+          Tags:
+          - hiring
+          Summary: Referral bonuses pay out after the hire's 90th day.
+      - ref: page_03
+        title: Backup Retention Matrix
+        properties:
+          Tags:
+          - infrastructure
+          Summary: Database backups are kept 35 days, snapshots 7 days.
+      - ref: page_04
+        title: Data Processing Agreement
+        properties:
+          Tags:
+          - legal
+          Summary: The standard DPA covers GDPR and CCPA obligations.
+      - ref: page_05
+        title: Dev Environment Setup
+        properties:
+          Tags:
+          - onboarding
+          Summary: Steps to clone the monorepo and run services locally.
+      - ref: page_06
+        title: Open Source License Policy
+        properties:
+          Tags:
+          - legal
+          Summary: Copyleft licenses need legal review before use.
+      - ref: page_07
+        title: Dunning Email Sequence
+        properties:
+          Tags:
+          - billing
+          Summary: Failed payments trigger three reminder emails over 14 days.
+      - ref: page_08
+        title: Offer Approval Workflow
+        properties:
+          Tags:
+          - hiring
+          Summary: Offers above band need VP and finance sign-off.
+      - ref: page_09
+        title: Password Rotation Policy
+        properties:
+          Tags:
+          - security
+          Summary: Service passwords rotate every 90 days through Vault.
+      - ref: page_10
+        title: New Hire First Week
+        properties:
+          Tags:
+          - onboarding
+          Summary: Day-by-day schedule for a new engineer's first week.
+expected:
+  validators:
+  - name: slack_message_posted
+    args:
+      channel: roi-sandbox-questions
+      thread_ts: '{{ refs.question_thread }}'
+  - name: message_mentions_terms
+    args:
+      channel: roi-sandbox-questions
+      thread_ts: '{{ refs.question_thread }}'
+      terms: &id001
+      - Offer Approval Workflow
+      - Interview Scorecard Rubric
+      - Referral Bonus Policy
+  - name: message_excludes_terms
+    args:
+      channel: roi-sandbox-questions
+      thread_ts: '{{ refs.question_thread }}'
+      terms: &id002
+      - Password Rotation Policy
+      - Dunning Email Sequence
+      - New Hire First Week
+      - Data Processing Agreement
+      - Open Source License Policy
+      - Dev Environment Setup
+      - Backup Retention Matrix
+  step_checks:
+    extract_filter:
+    - check: json_field_equals
+      args:
+        field: tag
+        value: hiring
+    compose_answer:
+    - check: text_mentions_terms
+      args:
+        terms: *id001
+    - check: text_excludes_terms
+      args:
+        terms: *id002
+  gold_outputs:
+    extract_filter:
+      tag: hiring
+    query_kb:
+      pages:
+      - title: Offer Approval Workflow
+        properties:
+          Tags:
+          - hiring
+          Summary: Offers above band need VP and finance sign-off.
+      - title: Interview Scorecard Rubric
+        properties:
+          Tags:
+          - hiring
+          Summary: Candidates are scored 1 to 4 on four competencies.
+      - title: Referral Bonus Policy
+        properties:
+          Tags:
+          - hiring
+          Summary: Referral bonuses pay out after the hire's 90th day.

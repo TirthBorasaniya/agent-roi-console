@@ -1,0 +1,109 @@
+version: 1
+task_id: meeting_notes_008
+workflow_id: meeting_notes
+instruction: 'Create a page in the Notion database meeting_notes for the meeting notes below. Use the
+  meeting title from the first line as the page title, set the Date property (YYYY-MM-DD) and the Attendees
+  property (list of first names), then append blocks to the page: one paragraph block per decision and
+  one to_do block per action item in the form "<Owner>: <task> (due <due>)". Notes: Support Escalations
+  Review
+
+  Held on November 12, 2026
+
+  Attendees: Chloe, Felix, Elena, Priya
+
+
+  Discussion
+
+  Chloe opened with a status update. The group reviewed open risks and agreed:
+
+  - Adopt the new on-call handbook
+
+  - Move the launch to the second week of the month
+
+
+  Next steps
+
+  - Felix to fix the flaky integration test by Feb 12
+
+  - Priya to update the roadmap slide by Oct 22
+
+  - Chloe to collect feedback from support by Dec 27
+
+  '
+inputs:
+  meetings_database: meeting_notes
+  notes: 'Support Escalations Review
+
+    Held on November 12, 2026
+
+    Attendees: Chloe, Felix, Elena, Priya
+
+
+    Discussion
+
+    Chloe opened with a status update. The group reviewed open risks and agreed:
+
+    - Adopt the new on-call handbook
+
+    - Move the launch to the second week of the month
+
+
+    Next steps
+
+    - Felix to fix the flaky integration test by Feb 12
+
+    - Priya to update the roadmap slide by Oct 22
+
+    - Chloe to collect feedback from support by Dec 27
+
+    '
+fixtures:
+  notion:
+    databases:
+    - name: meeting_notes
+      pages: []
+expected:
+  validators:
+  - name: notion_page_created
+    args:
+      database: meeting_notes
+      title_contains: Support Escalations Review
+  - name: notion_property_equals
+    args:
+      database: meeting_notes
+      title_contains: Support Escalations Review
+      property: Date
+      value: '2026-11-12'
+  - name: notion_todos_mention
+    args:
+      database: meeting_notes
+      title_contains: Support Escalations Review
+      terms: &id001
+      - Felix
+      - Priya
+      - Chloe
+      min_todos: 3
+  step_checks:
+    extract_meeting:
+    - check: json_field_contains
+      args:
+        field: title
+        value: Support Escalations Review
+    - check: json_field_equals
+      args:
+        field: date
+        value: '2026-11-12'
+    - check: json_list_equals
+      args:
+        field: attendees
+        value:
+        - Chloe
+        - Felix
+        - Elena
+        - Priya
+    - check: json_list_field_equals
+      args:
+        field: action_items
+        key: owner
+        value: *id001
+  gold_outputs: {}

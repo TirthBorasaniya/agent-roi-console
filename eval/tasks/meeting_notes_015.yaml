@@ -1,0 +1,107 @@
+version: 1
+task_id: meeting_notes_015
+workflow_id: meeting_notes
+instruction: 'Create a page in the Notion database meeting_notes for the meeting notes below. Use the
+  meeting title from the first line as the page title, set the Date property (YYYY-MM-DD) and the Attendees
+  property (list of first names), then append blocks to the page: one paragraph block per decision and
+  one to_do block per action item in the form "<Owner>: <task> (due <due>)". Notes: Launch Readiness Check
+
+  Held on February 12, 2026
+
+  Attendees: Marcus, Diego, Elena
+
+
+  Discussion
+
+  Marcus opened with a status update. The group reviewed open risks and agreed:
+
+  - Pause the referral experiment
+
+  - Move the launch to the second week of the month
+
+
+  Next steps
+
+  - Elena to file the vendor security review by Mar 26
+
+  - Diego to update the roadmap slide by Mar 8
+
+  - Marcus to schedule the follow-up session by Jan 28
+
+  '
+inputs:
+  meetings_database: meeting_notes
+  notes: 'Launch Readiness Check
+
+    Held on February 12, 2026
+
+    Attendees: Marcus, Diego, Elena
+
+
+    Discussion
+
+    Marcus opened with a status update. The group reviewed open risks and agreed:
+
+    - Pause the referral experiment
+
+    - Move the launch to the second week of the month
+
+
+    Next steps
+
+    - Elena to file the vendor security review by Mar 26
+
+    - Diego to update the roadmap slide by Mar 8
+
+    - Marcus to schedule the follow-up session by Jan 28
+
+    '
+fixtures:
+  notion:
+    databases:
+    - name: meeting_notes
+      pages: []
+expected:
+  validators:
+  - name: notion_page_created
+    args:
+      database: meeting_notes
+      title_contains: Launch Readiness Check
+  - name: notion_property_equals
+    args:
+      database: meeting_notes
+      title_contains: Launch Readiness Check
+      property: Date
+      value: '2026-02-12'
+  - name: notion_todos_mention
+    args:
+      database: meeting_notes
+      title_contains: Launch Readiness Check
+      terms: &id001
+      - Elena
+      - Diego
+      - Marcus
+      min_todos: 3
+  step_checks:
+    extract_meeting:
+    - check: json_field_contains
+      args:
+        field: title
+        value: Launch Readiness Check
+    - check: json_field_equals
+      args:
+        field: date
+        value: '2026-02-12'
+    - check: json_list_equals
+      args:
+        field: attendees
+        value:
+        - Marcus
+        - Diego
+        - Elena
+    - check: json_list_field_equals
+      args:
+        field: action_items
+        key: owner
+        value: *id001
+  gold_outputs: {}

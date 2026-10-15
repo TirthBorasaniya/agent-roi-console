@@ -1,0 +1,109 @@
+version: 1
+task_id: meeting_notes_012
+workflow_id: meeting_notes
+instruction: 'Create a page in the Notion database meeting_notes for the meeting notes below. Use the
+  meeting title from the first line as the page title, set the Date property (YYYY-MM-DD) and the Attendees
+  property (list of first names), then append blocks to the page: one paragraph block per decision and
+  one to_do block per action item in the form "<Owner>: <task> (due <due>)". Notes: Partner Integrations
+  Sync
+
+  Held on February 6, 2026
+
+  Attendees: Jonah, Ingrid, Sofia, Diego
+
+
+  Discussion
+
+  Jonah opened with a status update. The group reviewed open risks and agreed:
+
+  - Adopt the new on-call handbook
+
+  - Keep the current pricing for enterprise
+
+
+  Next steps
+
+  - Jonah to prepare the budget estimate by Mar 10
+
+  - Diego to send the recap to stakeholders by Jan 11
+
+  - Ingrid to schedule the follow-up session by Sep 13
+
+  '
+inputs:
+  meetings_database: meeting_notes
+  notes: 'Partner Integrations Sync
+
+    Held on February 6, 2026
+
+    Attendees: Jonah, Ingrid, Sofia, Diego
+
+
+    Discussion
+
+    Jonah opened with a status update. The group reviewed open risks and agreed:
+
+    - Adopt the new on-call handbook
+
+    - Keep the current pricing for enterprise
+
+
+    Next steps
+
+    - Jonah to prepare the budget estimate by Mar 10
+
+    - Diego to send the recap to stakeholders by Jan 11
+
+    - Ingrid to schedule the follow-up session by Sep 13
+
+    '
+fixtures:
+  notion:
+    databases:
+    - name: meeting_notes
+      pages: []
+expected:
+  validators:
+  - name: notion_page_created
+    args:
+      database: meeting_notes
+      title_contains: Partner Integrations Sync
+  - name: notion_property_equals
+    args:
+      database: meeting_notes
+      title_contains: Partner Integrations Sync
+      property: Date
+      value: '2026-02-06'
+  - name: notion_todos_mention
+    args:
+      database: meeting_notes
+      title_contains: Partner Integrations Sync
+      terms: &id001
+      - Jonah
+      - Diego
+      - Ingrid
+      min_todos: 3
+  step_checks:
+    extract_meeting:
+    - check: json_field_contains
+      args:
+        field: title
+        value: Partner Integrations Sync
+    - check: json_field_equals
+      args:
+        field: date
+        value: '2026-02-06'
+    - check: json_list_equals
+      args:
+        field: attendees
+        value:
+        - Jonah
+        - Ingrid
+        - Sofia
+        - Diego
+    - check: json_list_field_equals
+      args:
+        field: action_items
+        key: owner
+        value: *id001
+  gold_outputs: {}
