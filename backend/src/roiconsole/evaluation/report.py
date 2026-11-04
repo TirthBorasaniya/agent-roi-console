@@ -48,11 +48,6 @@ def table(header_list: list[str], row_list: list[list[str]]) -> str:
     return "\n".join(lines)
 
 
-def pending(target: str, name: str) -> str:
-    """Placeholder for a results file that does not exist yet."""
-    return f"_Not produced yet: `results/{name}.json` is written by `{target}`._"
-
-
 def source_line(results: dict[str, Any]) -> str:
     """One line naming the run that produced a table."""
     return f"_Source: `{results['run_id']}` at git `{results['git_sha']}`._"
@@ -138,9 +133,7 @@ def render_headline() -> str:
             ]
         )
     if not row_list:
-        return (
-            "_No results yet. Phase 2 runs `make eval`; until then this table is empty by design._"
-        )
+        return ""
     return table(["Measure", "Value", "Artifact"], row_list)
 
 
@@ -148,7 +141,7 @@ def render_e1() -> str:
     """Step success per step class per model."""
     e1 = read_results("e1_step_success")
     if not e1:
-        return pending("make eval-steps", "e1_step_success")
+        return ""
     model_list = e1["metrics"]["models"]
     row_list = [
         [step_class] + [fmt_rate(models.get(m, {}).get("success")) for m in model_list]
@@ -163,7 +156,7 @@ def render_e2() -> str:
     """Held-out success, cost per success, and latency per path and configuration."""
     e2 = read_results("e2_tasks")
     if not e2:
-        return pending("make eval-tasks", "e2_tasks")
+        return ""
     row_list = []
     for path, configs in e2["metrics"]["by_path_and_config"].items():
         for config, summary in configs.items():
@@ -193,7 +186,7 @@ def render_e3() -> str:
     """ROI for the routed configuration on each workflow's paths."""
     e3 = read_results("e3_roi")
     if not e3:
-        return pending("make eval-roi", "e3_roi")
+        return ""
     row_list = []
     for workflow_id, entry in e3["metrics"]["workflows"].items():
         assumption = "timed" if entry["assumptions"]["o_timed"] else "assumed"
@@ -232,7 +225,7 @@ def render_e4() -> str:
     """Gateway fallback per fault scenario, budget enforcement, and cache rates."""
     e4 = read_results("e4_gateway")
     if not e4:
-        return pending("make eval-gateway", "e4_gateway")
+        return ""
     metrics = e4["metrics"]
     row_list = [
         [
@@ -272,7 +265,7 @@ def render_e5() -> str:
     """Guard actions per simulated stream."""
     e5 = read_results("e5_guard")
     if not e5:
-        return pending("make eval-guard", "e5_guard")
+        return ""
     row_list = [
         [
             name,
@@ -289,7 +282,7 @@ def render_inventory() -> str:
     """Counts derived from code."""
     inventory = read_results("inventory")
     if not inventory:
-        return pending("make inventory", "inventory")
+        return ""
     metrics = inventory["metrics"]
     return table(
         ["Item", "Count"],
@@ -318,12 +311,15 @@ RENDERERS_DICT: dict[str, Callable[[], str]] = {
 
 
 def render_document(text: str) -> str:
-    """Replace every marked block with freshly rendered content; unknown names are left as is."""
+    """Fill each marked block from its results file; a block without results is left empty."""
 
     def substitute(match: re.Match) -> str:
         name = match.group("name")
         if name not in RENDERERS_DICT:
             return match.group(0)
-        return f"{match.group(1)}\n{RENDERERS_DICT[name]()}\n{match.group(4)}"
+        body = RENDERERS_DICT[name]()
+        if not body:
+            return f"{match.group(1)}{match.group(4)}"
+        return f"{match.group(1)}\n{body}\n{match.group(4)}"
 
     return MARKER_RE.sub(substitute, text)

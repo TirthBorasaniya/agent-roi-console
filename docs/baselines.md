@@ -4,9 +4,9 @@ The ROI computation (SPEC section 6) needs three human-time inputs per workflow:
 `minutes_per_task` (time for a person to do the task by hand), `review_minutes_per_task`
 (time to check the agent's output), and `fix_minutes_per_failure` (time to repair a failed task).
 
-## Current status: assumptions, not timings
+## Assumptions, not timings
 
-No workflow has been timed yet. Every value in `configs/workflows/*.yaml` is an assumption and is
+No workflow baseline is timed. Every value in `configs/workflows/*.yaml` is an assumption and is
 labeled `o_timed: false`. The original `minutes_per_task` values (15, 10, 20, 12) come from the
 seed data of the first version of this console. Review and fix times are assumptions: review is 2
 or 3 minutes, and fix is the baseline plus 3 minutes of cleanup. Because these are assumptions, the

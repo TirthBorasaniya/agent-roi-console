@@ -17,9 +17,11 @@ DOC = (
 )
 
 
-def test_pending_placeholder_without_results():
-    assert "Not produced yet" in render_document(DOC)
-    assert "keep" in render_document(DOC)
+def test_block_stays_empty_without_results():
+    rendered = render_document(DOC)
+    assert "<!-- results:e5:start --><!-- results:e5:end -->" in rendered
+    assert "keep" in rendered
+    assert render_document(rendered) == rendered
 
 
 def test_renders_table_from_results_and_is_idempotent():
