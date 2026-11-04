@@ -1,11 +1,10 @@
 name: integration
 
 # MCP servers as processes on dry-run fixtures with the oracle model, and the gateway
-# against Redis 8. No secrets are needed, so the nightly run is meaningful on forks too.
+# against Redis 8. No secrets are needed. Manual dispatch only until a first run has passed in
+# CI; add a schedule back once it has.
 on:
   workflow_dispatch:
-  schedule:
-    - cron: "17 6 * * *"
 
 jobs:
   integration:

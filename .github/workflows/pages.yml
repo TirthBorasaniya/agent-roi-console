@@ -1,7 +1,8 @@
 name: pages
 
 # Publishes the read-only static demo: the dashboard built in static mode with a
-# snapshot exported from the committed results files. No backend, no keys.
+# snapshot exported from the committed results files. No backend, no keys. It skips until the
+# repository variable PAGES_ENABLED is 'true' (Pages source set to GitHub Actions) and results exist.
 on:
   push:
     branches: [main]
@@ -24,11 +25,20 @@ jobs:
       ready: ${{ steps.results.outputs.ready }}
     steps:
       - uses: actions/checkout@v4
-      - name: Check that real results exist
+      - name: Check that publishing is configured and real results exist
         id: results
+        env:
+          PAGES_ENABLED: ${{ vars.PAGES_ENABLED }}
         run: |
-          if [ -f results/e2_tasks.json ]; then echo "ready=true" >> "$GITHUB_OUTPUT";
-          else echo "::notice::results/e2_tasks.json not committed yet; nothing to publish"; echo "ready=false" >> "$GITHUB_OUTPUT"; fi
+          if [ "$PAGES_ENABLED" != "true" ]; then
+            echo "::notice::repository variable PAGES_ENABLED is not 'true'; skipping the Pages publish"
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          elif [ ! -f results/e2_tasks.json ]; then
+            echo "::notice::results/e2_tasks.json is not committed; nothing to publish"
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
       - uses: astral-sh/setup-uv@v6
         if: steps.results.outputs.ready == 'true'
         with:
