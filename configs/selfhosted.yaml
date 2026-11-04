@@ -7,10 +7,10 @@ model:
   alias: qwen2.5-1.5b-instruct-q4_k_m
   description: "Qwen2.5-1.5B-Instruct, Q4_K_M GGUF (public fallback until the Spec 06 student is published)"
   repo: Qwen/Qwen2.5-1.5B-Instruct-GGUF
-  revision: 91cad51170dc346986eccefdc2dd33a9da36ead9
+  revision: 91cad51170dc346986eccefdc2dd33a9da36ead9  # pragma: allowlist secret
   filename: qwen2.5-1.5b-instruct-q4_k_m.gguf
   url: https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/91cad51170dc346986eccefdc2dd33a9da36ead9/qwen2.5-1.5b-instruct-q4_k_m.gguf
-  sha256: 6a1a2eb6d15622bf3c96857206351ba97e1af16c30d7a74ee38970e434e9407e
+  sha256: 6a1a2eb6d15622bf3c96857206351ba97e1af16c30d7a74ee38970e434e9407e  # pragma: allowlist secret
   size_bytes: 1117320736
 server:
   image: ghcr.io/ggml-org/llama.cpp:server-b11243

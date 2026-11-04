@@ -185,7 +185,9 @@ def test_twenty_log_activity_creates_note_and_target_for_sandbox_contact_only():
         operations_list.append(body["query"].split("(")[0].strip())
         if "query Person" in body["query"]:
             email = (
-                "maya@acme.roi-sandbox.test" if body["variables"]["id"] == "p1" else "x@real.com"
+                "maya@acme.roi-sandbox.test"
+                if body["variables"]["id"] == "p1"
+                else "x@elsewhere.invalid"
             )
             node = {"id": body["variables"]["id"], "emails": {"primaryEmail": email}, "name": {}}
             return httpx.Response(200, json={"data": {"person": node}})

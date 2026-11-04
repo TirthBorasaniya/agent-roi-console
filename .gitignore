@@ -47,6 +47,8 @@ backend/static/
 /logs/
 /mlruns/
 /recordings/
+recordings/
+snapshots/
 *.log
 
 # ============= Planning and assistant files (never committed) =============
